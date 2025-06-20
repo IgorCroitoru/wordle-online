@@ -102,14 +102,18 @@ export const GameGrid = ({
   maxRows = 6,
   className = "",
 }: GameGridProps) => {
-  const renderRow = (rowIndex: number) => {
+  // Debug logging
+  console.log("GameGrid props:", { guesses, currentGuess, currentRow, evaluations, maxRows });
+    const renderRow = (rowIndex: number) => {
     const isCurrentRowActive = rowIndex === currentRow;
     const isSubmittedRow = rowIndex < currentRow;
+    const hasGuessForRow = guesses[rowIndex] && guesses[rowIndex].length > 0;
 
     let letters: string[] = ["", "", "", "", ""];
     let states: TileState[] = ["empty", "empty", "empty", "empty", "empty"];
-    if (isCurrentRowActive) {
-      // Current row being typed
+    
+    if (isCurrentRowActive && !hasGuessForRow) {
+      // Current row being typed (only if no guess exists for this row)
       const currentLetters = currentGuess.split("");
       letters = [
         ...currentLetters,
@@ -118,10 +122,11 @@ export const GameGrid = ({
       states = currentLetters
         .map(() => "empty" as TileState)
         .concat(Array(5 - currentLetters.length).fill("empty" as TileState));
-    } else if (isSubmittedRow && guesses[rowIndex]) {
-      // Submitted row with evaluation
+    } else if ((isSubmittedRow || hasGuessForRow) && guesses[rowIndex]) {
+      // Submitted row with evaluation OR row with guess (handles winning row)
       letters = guesses[rowIndex].split("");
       states = evaluations[rowIndex] || Array(5).fill("absent" as TileState);
+      console.log(`Row ${rowIndex} - letters:`, letters, "states:", states);
     }
 
     return (

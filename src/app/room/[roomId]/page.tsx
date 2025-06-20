@@ -20,11 +20,11 @@ export default function GameRoomColyseus() {
   
   const [playerName, setPlayerName] = useState('');
   const [currentGuess, setCurrentGuess] = useState('');
-  const [guesses, setGuesses] = useState<string[]>([]);
   const [evaluations, setEvaluations] = useState<TileState[][]>([]);
   const [letterStates, setLetterStates] = useState<Record<string, TileState>>({});
   const hasJoinedRef = useRef(false); // Track if we've already attempted to join
     const {
+    guesses,
     room,
     isConnected,
     currentPlayer,
@@ -76,26 +76,24 @@ export default function GameRoomColyseus() {
   useEffect(() => {
     console.log("Page gameState changed:", gameState);
   }, [gameState]);
-
   // Update local state when player progress changes
   useEffect(() => {
     if (currentPlayer) {
-      const playerGuesses: string[] = [];
       const playerEvaluations: TileState[][] = [];
+      console.log("Current player progress:", currentPlayer);
+      console.log("Available guesses:", guesses);
       
-      for (let i = 0; i < currentPlayer.currentRow; i++) {
+      // Process each completed row
+      for (let i = 0; i <= currentPlayer.currentRow; i++) {
         const rowProgress = Array.from(currentPlayer.progress.slice(i*5, (i+1)*5)) as TileState[];
         playerEvaluations.push(rowProgress);
-        
-        // For display purposes, we'll show placeholder letters
-        // In a real implementation, we might not show actual letters
-        playerGuesses.push('     '); // 5 spaces as placeholder
+        console.log(`Row ${i} progress:`, rowProgress);
       }
       
-      setGuesses(playerGuesses);
+      console.log("Current player progress updated:", guesses, playerEvaluations);
       setEvaluations(playerEvaluations);
     }
-  }, [currentPlayer]);
+  }, [currentPlayer, guesses]); // Add guesses as dependency
 
   const handleLetterClick = (letter: string) => {
     if (!currentPlayer || currentPlayer.gameStatus !== 'playing' || currentGuess.length >= 5) return;
@@ -281,6 +279,10 @@ export default function GameRoomColyseus() {
 
             {/* Game Grid */}
             <div className="mb-8">
+              {/* Debug information */}
+              <div className="text-xs text-gray-500 mb-2">
+                Debug - Guesses: {JSON.stringify(guesses)} | Evaluations length: {evaluations.length}
+              </div>
               <GameGrid
                 guesses={guesses}
                 currentGuess={currentGuess}
@@ -472,6 +474,10 @@ export default function GameRoomColyseus() {
 
             {/* Game Grid */}
             <div className="mb-6">
+              {/* Debug information */}
+              <div className="text-xs text-gray-500 mb-2">
+                Debug - Guesses: {JSON.stringify(guesses)} | Evaluations length: {evaluations.length}
+              </div>
               <GameGrid
                 guesses={guesses}
                 currentGuess={currentGuess}

@@ -6,6 +6,10 @@ import {
   TileState,
   RoomGameState,
 } from "../../server/schemas/WordleGameState";
+import {
+  IPlayerData,
+  PrivatePlayerGuessData,
+} from "../../shared/types/messages";
 interface RoomJoinOptions {
   playerName: string;
   wordleRoomId?: string;
@@ -13,11 +17,12 @@ interface RoomJoinOptions {
 interface GameHookReturn {
   room: Room<WordleGameState> | null;
   isConnected: boolean;
-  currentPlayer: Player | null;
+  currentPlayer: IPlayerData | null;
   players: Map<string, Player>;
   currentRound: number;
   gameState: RoomGameState;
   winner: string | undefined;
+  guesses: string[];
   joinRoom: (
     room: string,
     options: RoomJoinOptions & JoinOptions
@@ -32,9 +37,10 @@ interface GameHookReturn {
 
 export const useWordleGame = (): GameHookReturn => {
   const [room, setRoom] = useState<Room<WordleGameState> | null>(null);
+  const [guesses, setGuesses] = useState<string[]>([]);
   const [isConnecting, setIsConnecting] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
-  const [currentPlayer, setCurrentPlayer] = useState<Player | null>(null);
+  const [currentPlayer, setCurrentPlayer] = useState<IPlayerData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [currentRound, setCurrentRound] = useState<number>(1);
   const [winner, setWinner] = useState<string | undefined>(undefined);
@@ -44,7 +50,9 @@ export const useWordleGame = (): GameHookReturn => {
   );
   const clientRef = useRef<Client | null>(null);
   const connectionAttemptRef = useRef<string | null>(null); // Track current connection attempt
-
+  useEffect(() => {
+    console.log("Current player updated:", currentPlayer);
+  }, [currentPlayer]);
   useEffect(() => {
     // Initialize Colyseus client
     const serverUrl =
@@ -55,12 +63,20 @@ export const useWordleGame = (): GameHookReturn => {
     clientRef.current = new Client(serverUrl);
 
     return () => {
+      console.log("Cleaning up Colyseus client...");
+      console.log(room)
       if (room) {
-        room.leave();
+        console.log("Leaving room before cleanup:", room.name);
+        console.log(room, room.connection.isOpen,  !isConnecting)
+        leaveRoom().then(()=>{
+          
+          console.log("Room left and cleaned up");
+        })
       }
       clientRef.current = null;
     };
-  }, []);
+  }, [room, isConnecting]);
+  
   const joinRoom = useCallback(
     async (
       roomName: string,
@@ -100,11 +116,20 @@ export const useWordleGame = (): GameHookReturn => {
         );
         console.log("✅ Joined room:", newRoom.name, newRoom.roomId);
         setRoom(newRoom);
+        console.log("Room set:", newRoom.name, newRoom.roomId);
         setIsConnected(true);
+        setIsConnecting(false);
         const $ = getStateCallbacks(newRoom);
-
         $(newRoom.state).players.onAdd((player, sessionId) => {
           console.log("Player added:", player, sessionId);
+          $(player).onChange(() => {
+            console.log("Player changed:", player, sessionId);
+            // Use sessionId comparison instead of currentPlayer.id to avoid closure issues
+            if (sessionId === newRoom.sessionId) {
+              console.log("Current player updated:", player);
+              setCurrentPlayer(player.toJSON() as IPlayerData);
+            }
+          });
           $(player).progress.onChange((value, index) => {
             console.log("Player progress updated:", value, index);
             setPlayers((prev) => {
@@ -131,7 +156,7 @@ export const useWordleGame = (): GameHookReturn => {
               }
               return newMap;
             });
-          })
+          });
           $(player).listen("progress", (value) => {
             console.log("Progress updated:", value);
             setPlayers((prev) => {
@@ -205,12 +230,13 @@ export const useWordleGame = (): GameHookReturn => {
               return newMap;
             });
           });
-
+          console.log("Adding player to state:", player, sessionId);
           setPlayers((prev) => new Map(prev).set(sessionId, player));
 
           // Update current player if it's us
           if (sessionId === newRoom.sessionId) {
-            setCurrentPlayer(player);
+            console.log("Setting current player:", player);
+            setCurrentPlayer(player.toJSON() as IPlayerData);
           }
         });
         $(newRoom.state).players.onRemove((player, sessionId) => {
@@ -243,8 +269,38 @@ export const useWordleGame = (): GameHookReturn => {
         });
         $(newRoom.state).listen("winner", (value) => {
           setWinner(value);
+        });        newRoom.onMessage<PrivatePlayerGuessData>(
+          "private_player_data",
+          (data) => {
+            console.log("Received private player data:", data);
+            setGuesses(data.guesses);
+            // You could also validate that the round number matches
+            if (data.roundNumber !== currentRound) {
+              console.warn(`Round number mismatch: received ${data.roundNumber}, expected ${currentRound}`);
+            }
+          }
+        );
+        
+        // Handle round started message
+        newRoom.onMessage("roundStarted", (data) => {
+          console.log("Round started:", data);
+          // The round number should already be updated via state.listen
+          // But this message can be used for additional round-specific logic
         });
-
+        
+        // Handle game started message
+        newRoom.onMessage("gameStarted", (data) => {
+          console.log("Game started:", data);
+          // Additional game start logic if needed
+        });
+        
+        // Handle player joined message
+        newRoom.onMessage("playerJoined", (data) => {
+          console.log("Player joined:", data);
+          // Additional player join logic if needed
+        });
+        
+        // ...existing code...
         newRoom.onError((code, message) => {
           console.error("Room error:", code, message);
           setError(`Room error: ${message}`);
@@ -269,6 +325,7 @@ export const useWordleGame = (): GameHookReturn => {
         );
 
         // setJoinError(true);      } finally {
+        
         setIsConnecting(false);
         connectionAttemptRef.current = null; // Clear connection attempt
       }
@@ -284,7 +341,7 @@ export const useWordleGame = (): GameHookReturn => {
       setRoom(null);
       console.log("Room is null");
     }
-  }, []); // Remove dependencies to prevent recreation
+  }, [room, isConnected]); // Remove dependencies to prevent recreation
 
   const makeGuess = useCallback(
     (guess: string) => {
@@ -334,6 +391,7 @@ export const useWordleGame = (): GameHookReturn => {
   }, [isConnected, isConnecting, room]);
 
   return {
+    guesses,
     currentRound,
     gameState,
     winner,
