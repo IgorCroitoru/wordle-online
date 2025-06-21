@@ -1,11 +1,18 @@
 // Import shared game types
 export * from './game';
-
+export const SOCKET_MESSAGES = {
+  JOIN_ROOM: 'join_room',
+  GUESS: 'guess',
+  READY: 'ready',
+  PLAYER_GUESSES: 'player_guesses',
+  START_ROUND: 'startRound',
+  NEXT_ROUND: "nextRound",
+} as const;
 // Additional message interfaces specific to private communication
 export interface PrivatePlayerGuessData {
   guesses: string[];
   roundNumber: number;
-  persistentId: string;
+  // persistentId: string;
 }
 
 // Server response messages

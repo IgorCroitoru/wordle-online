@@ -9,6 +9,7 @@ import {
 import {
   IPlayerData,
   PrivatePlayerGuessData,
+  SOCKET_MESSAGES,
 } from "../../shared/types/messages";
 interface RoomJoinOptions {
   playerName: string;
@@ -51,10 +52,6 @@ export const useWordleGame = (): GameHookReturn => {
   const clientRef = useRef<Client | null>(null);
   const connectionAttemptRef = useRef<string | null>(null); // Track current connection attempt
 
-
-
-
-  
   useEffect(() => {
     console.log("Current player updated:", currentPlayer);
   }, [currentPlayer]);
@@ -69,19 +66,18 @@ export const useWordleGame = (): GameHookReturn => {
 
     return () => {
       console.log("Cleaning up Colyseus client...");
-      console.log(room)
+      console.log(room);
       if (room) {
         console.log("Leaving room before cleanup:", room.name);
-        console.log(room, room.connection.isOpen,  !isConnecting)
-        leaveRoom().then(()=>{
-          
+        console.log(room, room.connection.isOpen, !isConnecting);
+        leaveRoom().then(() => {
           console.log("Room left and cleaned up");
-        })
+        });
       }
       clientRef.current = null;
     };
   }, [room, isConnecting]);
-  
+
   const joinRoom = useCallback(
     async (
       roomName: string,
@@ -274,37 +270,40 @@ export const useWordleGame = (): GameHookReturn => {
         });
         $(newRoom.state).listen("winner", (value) => {
           setWinner(value);
-        });        newRoom.onMessage<PrivatePlayerGuessData>(
-          "private_player_data",
+        });
+        newRoom.onMessage<PrivatePlayerGuessData>(
+          SOCKET_MESSAGES.PLAYER_GUESSES,
           (data) => {
             console.log("Received private player data:", data);
             setGuesses(data.guesses);
             // You could also validate that the round number matches
             if (data.roundNumber !== currentRound) {
-              console.warn(`Round number mismatch: received ${data.roundNumber}, expected ${currentRound}`);
+              console.warn(
+                `Round number mismatch: received ${data.roundNumber}, expected ${currentRound}`
+              );
             }
           }
         );
-        
+
         // Handle round started message
         newRoom.onMessage("roundStarted", (data) => {
           console.log("Round started:", data);
           // The round number should already be updated via state.listen
           // But this message can be used for additional round-specific logic
         });
-        
+
         // Handle game started message
         newRoom.onMessage("gameStarted", (data) => {
           console.log("Game started:", data);
           // Additional game start logic if needed
         });
-        
+
         // Handle player joined message
         newRoom.onMessage("playerJoined", (data) => {
           console.log("Player joined:", data);
           // Additional player join logic if needed
         });
-        
+
         // ...existing code...
         newRoom.onError((code, message) => {
           console.error("Room error:", code, message);
@@ -330,7 +329,7 @@ export const useWordleGame = (): GameHookReturn => {
         );
 
         // setJoinError(true);      } finally {
-        
+
         setIsConnecting(false);
         connectionAttemptRef.current = null; // Clear connection attempt
       }

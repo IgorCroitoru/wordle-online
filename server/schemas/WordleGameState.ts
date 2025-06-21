@@ -15,6 +15,15 @@ export class Player extends Schema {
   @type('number') totalScore: number = 0;
   @type([ 'string' ]) progress = new ArraySchema<TileState>();
 
+  // Private round data (not synced to clients)
+  private playerRoundData: {
+    roundNumber: number;
+    guesses: string[];
+  } = {
+    roundNumber: 1,
+    guesses: Array(6).fill("")
+  };
+
   constructor(id: string, name: string) {
     super();
     this.id = id;
@@ -25,6 +34,32 @@ export class Player extends Schema {
         this.progress.push('empty');
    
     }
+  }
+
+  // Methods to manage private round data
+  setRoundData(roundNumber: number, guesses: string[] = Array(6).fill("")) {
+    this.playerRoundData = {
+      roundNumber,
+      guesses: [...guesses]
+    };
+  }
+
+  getRoundData() {
+    return { ...this.playerRoundData };
+  }
+
+  setGuess(rowIndex: number, guess: string) {
+    if (rowIndex >= 0 && rowIndex < 6) {
+      this.playerRoundData.guesses[rowIndex] = guess;
+    }
+  }
+
+  getGuesses(): string[] {
+    return [...this.playerRoundData.guesses];
+  }
+
+  getCurrentRoundNumber(): number {
+    return this.playerRoundData.roundNumber;
   }
 }
 
