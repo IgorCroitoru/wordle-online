@@ -452,7 +452,7 @@ export const PlayersLeaderboard = ({
               <div className="flex flex-col items-end space-y-1">
                 <div className="flex items-center space-x-2">
                   <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                    {player.currentRow}/6
+                    {player.currentRow + 1}/6
                   </span>
                   <span className="text-lg">
                     {player.gameStatus === "won"

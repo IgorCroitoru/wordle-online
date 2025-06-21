@@ -50,6 +50,11 @@ export const useWordleGame = (): GameHookReturn => {
   );
   const clientRef = useRef<Client | null>(null);
   const connectionAttemptRef = useRef<string | null>(null); // Track current connection attempt
+
+
+
+
+  
   useEffect(() => {
     console.log("Current player updated:", currentPlayer);
   }, [currentPlayer]);

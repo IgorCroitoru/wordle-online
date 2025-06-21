@@ -109,7 +109,7 @@ export class WordleGameState extends Schema {
   }
 
   canStartNextRound(): boolean {
-    return this.gameState === 'finished'
+    return this.gameState === 'finished' || this.gameState === 'waiting'
   }
 
   startNextRound(word: string): void {

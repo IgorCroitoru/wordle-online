@@ -40,7 +40,6 @@ export class WordleRoom extends Room<WordleGameState> {
     this.state = new WordleGameState(options.roomId || this.roomId);
 
     console.log("WordleRoom created:", this.roomId);
-
     // Handle player guess
     this.onMessage("guess", (client, message: GuessMessage) => {
       this.handleGuess(client, message.guess);
@@ -105,7 +104,6 @@ export class WordleRoom extends Room<WordleGameState> {
       this.sendPrivatePlayerGuessesData(client, persistentId, freshRoundData.guesses);
     }
   }
-
   onLeave(client: Client, consented: boolean) {
     console.log(`Player ${client.sessionId} left room ${this.roomId}`);
 
@@ -118,6 +116,11 @@ export class WordleRoom extends Room<WordleGameState> {
       //   playerName: player.name,
       //   playerCount: this.state.getPlayerCount(),
       // });
+
+      // Check if round should end after player leaves (similar to when player wins/loses)
+      if (this.state.gameState === "playing") {
+        this.checkRoundEnd();
+      }
 
       // If no players left, dispose the room
       if (this.state.getPlayerCount() === 0) {
@@ -172,7 +175,7 @@ export class WordleRoom extends Room<WordleGameState> {
     if (won) {
       player.gameStatus = "won";
       player.completionTime = Date.now() - (this.state.roundStartTime || 0);
-
+      player.isReady = false;
       // Broadcast player won
       //   this.broadcast('playerWon', {
       //     playerId: client.sessionId,
@@ -185,7 +188,7 @@ export class WordleRoom extends Room<WordleGameState> {
       this.checkRoundEnd();
     } else {
       player.currentRow++;
-
+      player.isReady = false; // Reset ready state after guess
       // Check if player lost (used all rows)
       if (player.currentRow >= 6) {
         player.gameStatus = "lost";
@@ -328,14 +331,25 @@ export class WordleRoom extends Room<WordleGameState> {
       maxGuesses: 6,
     });
   }
-
   private checkRoundEnd() {
     const players = this.state.getAllPlayers();
-    const allPlayersFinished = players.every(
+    
+    // Only consider players who have actually participated in this round (made at least one guess)
+    const activePlayers = players.filter(player => {
+      // A player is considered active if they have won/lost (which means they participated)
+      return player.gameStatus ==="playing" || player.gameStatus === "won" || player.gameStatus === "lost";
+    });
+    
+    // If no players have participated yet, don't end the round
+    if (activePlayers.length === 0) {
+      return;
+    }
+    
+    const allActivePlayersFinished = activePlayers.every(
       (player) => player.gameStatus === "won" || player.gameStatus === "lost"
     );
 
-    if (allPlayersFinished) {
+    if (allActivePlayersFinished) {
       this.state.finishRound();
 
       // Check if game is complete
