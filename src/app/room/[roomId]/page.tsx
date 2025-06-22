@@ -10,6 +10,7 @@ import {
   PlayerProgress,
   PlayersLeaderboard,
   RoomStatus,
+  CopyRoom,
 } from "@/components/GameComponents";
 import { Client, Room } from "colyseus.js";
 
@@ -24,6 +25,7 @@ export default function GameRoomColyseus() {
   const [letterStates, setLetterStates] = useState<Record<string, TileState>>(
     {}
   );
+  
   const hasJoinedRef = useRef(false); // Track if we've already attempted to join
   const {
     guesses,
@@ -46,45 +48,52 @@ export default function GameRoomColyseus() {
   // Get reactive state from Colyseus room
   const gameRoomState = room?.state;
   useEffect(() => {
-  // Define priority order: correct > present > absent > empty
-  const tilePriority: Record<TileState, number> = {
-    'correct': 3,
-    'present': 2, 
-    'absent': 1,
-    'empty': 0
-  };
+    // Define priority order: correct > present > absent > empty
+    const tilePriority: Record<TileState, number> = {
+      correct: 3,
+      present: 2,
+      absent: 1,
+      empty: 0,
+    };
 
-  // Helper function to get the highest priority tile state
-  const getHigherPriorityTile = (current: TileState, newTile: TileState): TileState => {
-    return tilePriority[newTile] > tilePriority[current] ? newTile : current;
-  };
+    // Helper function to get the highest priority tile state
+    const getHigherPriorityTile = (
+      current: TileState,
+      newTile: TileState
+    ): TileState => {
+      return tilePriority[newTile] > tilePriority[current] ? newTile : current;
+    };
 
-  // Process each guess and build letter states with priority
-  const newLetterStates: Record<string, TileState> = {};
-  
-  guesses.forEach((guess, index) => {
-    if (!guess || guess.length === 0) return;
-    
-    // Get the tile states for this guess (5 tiles per row)
-    const guessTileStates = currentPlayer?.progress.slice(index * 5, (index + 1) * 5) || [];
-    
-    guessTileStates.forEach((tile, tileIndex) => {
-      const letter = guess[tileIndex];
-      if (!letter) return;
-      
-      // If this letter already has a state, compare priorities
-      if (newLetterStates[letter]) {
-        newLetterStates[letter] = getHigherPriorityTile(newLetterStates[letter], tile);
-      } else {
-        newLetterStates[letter] = tile;
-      }
+    // Process each guess and build letter states with priority
+    const newLetterStates: Record<string, TileState> = {};
+
+    guesses.forEach((guess, index) => {
+      if (!guess || guess.length === 0) return;
+
+      // Get the tile states for this guess (5 tiles per row)
+      const guessTileStates =
+        currentPlayer?.progress.slice(index * 5, (index + 1) * 5) || [];
+
+      guessTileStates.forEach((tile, tileIndex) => {
+        const letter = guess[tileIndex];
+        if (!letter) return;
+
+        // If this letter already has a state, compare priorities
+        if (newLetterStates[letter]) {
+          newLetterStates[letter] = getHigherPriorityTile(
+            newLetterStates[letter],
+            tile
+          );
+        } else {
+          newLetterStates[letter] = tile;
+        }
+      });
     });
-  });
 
-  // Update the state with the computed letter states
-  setLetterStates(newLetterStates);
-}, [guesses, currentPlayer?.progress]);
-    useEffect(() => {
+    // Update the state with the computed letter states
+    setLetterStates(newLetterStates);
+  }, [guesses, currentPlayer?.progress]);
+  useEffect(() => {
     setLetterStates({});
   }, [currentRound]);
   useEffect(() => {
@@ -101,7 +110,11 @@ export default function GameRoomColyseus() {
       console.log("Attempting to join room:", roomId);
       hasJoinedRef.current = true;
       const savedId = localStorage.getItem("persistentId") ?? undefined;
-      joinRoom("wordle", { wordleRoomId: roomId, playerName: savedName, persistentId: savedId });
+      joinRoom("wordle", {
+        wordleRoomId: roomId,
+        playerName: savedName,
+        persistentId: savedId,
+      });
     }
 
     // Cleanup on unmount
@@ -180,12 +193,13 @@ export default function GameRoomColyseus() {
   const handleNextRound = () => {
     nextRound();
   };
-
   const handleToggleReady = () => {
     if (currentPlayer) {
       setReady(!currentPlayer.isReady);
     }
   };
+
+
 
   // Handle keyboard events
   useEffect(() => {
@@ -230,14 +244,15 @@ export default function GameRoomColyseus() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-yellow-50 dark:from-gray-900 dark:to-gray-800">
       <div className="container mx-auto px-4 ">
+        {" "}
         {/* Header */}
-        <div className="text-center mb-6 ">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            Room: {roomId}
-          </h1>
-          <p className="text-gray-600 dark:text-gray-300">
+        <div className="text-center mb-6">
+          {/* Welcome Message */}
+          <p className="text-gray-600 dark:text-gray-300 mb-4">
             Welcome, {playerName}!
           </p>
+
+         
           {/* Round Information */}
           <div className="mt-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600 max-w-md mx-auto">
             <div className="flex items-center justify-between m-1.5">
@@ -247,8 +262,9 @@ export default function GameRoomColyseus() {
               <span className="text-sm font-bold text-blue-600 dark:text-blue-400">
                 Your Score: {currentPlayer?.totalScore || 0} pts
               </span>
-            </div>            {/* Player Ready Status and Button */}
-            {(gameState === "waiting" || gameState === 'finished') && (
+            </div>{" "}
+            {/* Player Ready Status and Button */}
+            {(gameState === "waiting" || gameState === "finished") && (
               <div className="flex items-center justify-center gap-3 mb-2">
                 {/* <span
                   className={`text-xs px-2 py-1 rounded-full ${
@@ -270,16 +286,17 @@ export default function GameRoomColyseus() {
                   {currentPlayer?.isReady ? "Not Ready" : "Ready"}
                   {/* <ReadyCountBubble players={Array.from(players.values())}/> */}
                   <div className="readyPulse absolute inline-flex items-center justify-center w-8 h-8 text-[10px] font-bold text-white bg-yellow-600 border-2 border-white rounded-full -top-2 -end-2 dark:border-gray-800">
-                    {Array.from(players.values()).filter(p => p.isReady).length}/{Array.from(players.values()).length}
-                    </div>
+                    {
+                      Array.from(players.values()).filter((p) => p.isReady)
+                        .length
+                    }
+                    /{Array.from(players.values()).length}
+                  </div>
                 </button>
               </div>
             )}
-           
-        
             {/* Game Status */}
             <div className="text-center mb-2">
- 
               {gameRoomState.gameState === "playing" && (
                 <span className="text-sm font-semibold me-2 px-2.5 py-0.5 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded-sm ms-2">
                   Round {currentRound} in Progress
@@ -288,12 +305,11 @@ export default function GameRoomColyseus() {
             </div>
           </div>
         </div>
-
         {/* Desktop Layout */}
         <div className="hidden lg:flex lg:flex-row gap-8 max-w-7xl mx-auto">
-          {" "}
           {/* Left Sidebar - Multiplayer Info (Desktop Only) */}
-          <div className="lg:w-80 space-y-4">
+          <div className="lg:w-80 space-y-2">
+            <CopyRoom roomId={roomId} className="" />
             <RoomStatus
               gameState={gameState}
               winner={winner}
@@ -343,8 +359,8 @@ export default function GameRoomColyseus() {
                   😔 Game Over! Better luck next time!
                 </h2>
               </div>
-            )}{" "}  
-            {/* Control Buttons */}        
+            )}{" "}
+            {/* Control Buttons */}
             <div className="mb-8">
               <Keyboard
                 onLetterClick={handleLetterClick}
@@ -374,7 +390,8 @@ export default function GameRoomColyseus() {
                 ← Back to Home
               </button>
             </div>
-          </div>{" "}          {/* Right Sidebar - Connection Status */}
+          </div>{" "}
+          {/* Right Sidebar - Connection Status */}
           <div className="lg:w-80 space-y-4">
             <div className="bg-white dark:bg-gray-800 rounded-lg p-1 border border-gray-300 dark:border-gray-600">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
@@ -391,10 +408,7 @@ export default function GameRoomColyseus() {
                     {isConnected ? "Connected" : "Disconnected"}
                   </span>
                 </div>
-                <div className="flex justify-between">
-                  <span>Room ID:</span>
-                  <span className="font-mono text-xs">{roomId}</span>
-                </div>
+              
                 <div className="flex justify-between">
                   <span>Game state:</span>
                   <span className="font-mono text-xs">{gameState}</span>
@@ -407,7 +421,6 @@ export default function GameRoomColyseus() {
             </div>
           </div>
         </div>
-
         {/* Mobile Layout */}
         <div className="lg:hidden">
           {/* Mobile Game Area - Top Priority */}
@@ -448,7 +461,8 @@ export default function GameRoomColyseus() {
                   😔 Game Over! Better luck next time!
                 </h2>
               </div>
-            )}            {/* Mobile Control Buttons */}
+            )}{" "}
+            {/* Mobile Control Buttons */}
             {/* {gameState === "waiting" && (
               <div className="text-center mb-6 p-4 bg-blue-100 dark:bg-blue-900 rounded-lg">
                 <button
@@ -497,9 +511,10 @@ export default function GameRoomColyseus() {
 
           {/* Mobile Boards Section - Bottom */}
           <div className="space-y-6">
-            {" "}
             {/* Room Status and Leaderboard */}
             <div className="grid grid-cols-1 gap-4">
+              <CopyRoom roomId={roomId} className="w-full" />
+
               <RoomStatus
                 gameState={gameState}
                 winner={winner}
