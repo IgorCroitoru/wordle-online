@@ -44,12 +44,16 @@ interface PlayerSnapshot {
 export class WordleRoom extends Room<WordleGameState> {
   private playerSnapshots = new Map<string, PlayerSnapshot>(); // persistentId -> snapshot
   private playerSessions = new Map<string, string>(); // sessionId -> persistentId
+  private cleanupInterval?: NodeJS.Timeout
+  private CLEANUP_INTERVAL_MS = 2 * 60 * 1000; // 2 minutes
+  private CLEANUP_OLDER_THAN_MS = 10 * 60 * 1000; // 10 minutes
   maxClients = 6;
+
 
   onCreate(options: any) {
     console.log("Creating WordleRoom with options:", options);
     this.state = new WordleGameState(options.roomId || this.roomId);
-
+    this.startSnapshotCleanupCron()
     console.log("WordleRoom created:", this.roomId);
     // Handle player guess
     this.onMessage(SOCKET_MESSAGES.GUESS, (client, message: GuessMessage) => {
@@ -62,9 +66,12 @@ export class WordleRoom extends Room<WordleGameState> {
     });
 
     // Handle start round
-    this.onMessage(SOCKET_MESSAGES.START_ROUND, (client, message: StartRoundMessage) => {
-      this.handleStartRound();
-    });
+    this.onMessage(
+      SOCKET_MESSAGES.START_ROUND,
+      (client, message: StartRoundMessage) => {
+        this.handleStartRound();
+      }
+    );
 
     // Handle next round
     this.onMessage(SOCKET_MESSAGES.NEXT_ROUND, (client) => {
@@ -75,6 +82,21 @@ export class WordleRoom extends Room<WordleGameState> {
     console.log(`Player ${options.playerName} joined room ${this.roomId}`);
 
     const persistentId = options.persistentId || this.generateUUID();
+    client.send(SOCKET_MESSAGES.JOINED_ROOM, {
+      persistentId: persistentId
+    })
+    const existingPersistentId = Array.from(this.playerSessions.values())
+      .some((id) => id === persistentId)
+    const existingSessionId = this.playerSessions.has(client.sessionId);
+
+    if (existingPersistentId || existingSessionId) {
+      console.error(
+        `Player with persistentId ${persistentId} or sessionId ${client.sessionId} already exists in room ${this.roomId}`
+      );
+      client.leave(1000, 'Connection already exists'); // Close connection if player already exists
+      return;
+    }
+
     this.playerSessions.set(client.sessionId, persistentId);
 
     // Add player to game state
@@ -93,16 +115,47 @@ export class WordleRoom extends Room<WordleGameState> {
     );
   }
   /**
+   * Start automatic snapshot cleanup cron
+   */
+  private startSnapshotCleanupCron(): void {
+    this.cleanupInterval = setInterval(() => {
+      console.log(`[CRON] Running automatic snapshot cleanup for room ${this.roomId}`);
+      
+      const beforeCount = this.playerSnapshots.size;
+      this.cleanupOldSnapshots(undefined, this.CLEANUP_OLDER_THAN_MS); // Clean up snapshots older than 10 minutes
+      const afterCount = this.playerSnapshots.size;
+      
+      if (beforeCount > afterCount) {
+        console.log(`[CRON] Cleaned up ${beforeCount - afterCount} old snapshots`);
+      } else {
+        console.log(`[CRON] No old snapshots to clean up`);
+      }
+    }, this.CLEANUP_INTERVAL_MS);
+
+    console.log(`Started snapshot cleanup cron with ${this.CLEANUP_INTERVAL_MS / 1000}s interval`);
+  }
+   /**
+   * Stop the cleanup cron
+   */
+  private stopSnapshotCleanupCron(): void {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = undefined;
+      console.log("Stopped snapshot cleanup cron");
+    }
+  }
+  /**
    * Handle player data when they join - either restore from snapshot or create fresh
    */
   private handlePlayerDataOnJoin(client: Client, persistentId: string) {
     const player = this.state.getPlayer(client.sessionId);
     if (!player) {
-      console.error(`Player not found for session ${client.sessionId}`);
+      //console.error(`Player not found for session ${client.sessionId}`);
       return;
     }
 
     const currentRound = this.state.currentRound;
+    const existingSnapshot = this.playerSnapshots.get(persistentId);
 
     if (this.hasValidSnapshot(persistentId)) {
       // Player rejoining in current round - restore from snapshot
@@ -118,7 +171,7 @@ export class WordleRoom extends Room<WordleGameState> {
 
       // Restore player state from snapshot
       this.restorePlayerFromSnapshot(player, snapshot);
-
+      this.playerSnapshots.delete(persistentId); // Remove snapshot after restoring
       // Send restored guesses to client
       this.sendPrivatePlayerGuessesData(client, persistentId, snapshot.guesses);
     } else {
@@ -127,7 +180,30 @@ export class WordleRoom extends Room<WordleGameState> {
         `Creating fresh state for ${persistentId} in round ${currentRound}`
       );
 
-      // Initialize fresh round data
+      // Check if there's an old snapshot (from previous rounds) to restore totalScore
+      if (existingSnapshot) {
+        console.log(
+          `Found previous snapshot for ${persistentId} from round ${existingSnapshot.roundNumber}, restoring totalScore: ${existingSnapshot.totalScore}`
+        );
+
+        // Restore accumulated total score from previous rounds
+        player.totalScore = existingSnapshot.totalScore;
+
+        // Also restore player name in case it was updated
+        if (existingSnapshot.playerName !== player.name) {
+          console.log(
+            `Updating player name from ${player.name} to ${existingSnapshot.playerName}`
+          );
+          // Note: You might want to keep the current name instead, depending on your requirements
+          // player.name = existingSnapshot.playerName;
+        }
+      } else {
+        console.log(
+          `No previous snapshot found for ${persistentId}, starting with fresh state`
+        );
+      }
+
+      // Initialize fresh round data for current round
       player.setRoundData(currentRound, Array(6).fill(""));
 
       // Send fresh empty guesses to client
@@ -140,7 +216,6 @@ export class WordleRoom extends Room<WordleGameState> {
   }
   onLeave(client: Client, consented: boolean) {
     console.log(`Player ${client.sessionId} left room ${this.roomId}`);
-
     const player = this.state.getPlayer(client.sessionId);
     if (player) {
       // Save player snapshot before removing them
@@ -158,11 +233,18 @@ export class WordleRoom extends Room<WordleGameState> {
       if (this.state.getPlayerCount() === 0) {
         this.disconnect();
       }
+      // Check if all players are ready to start next round
+      if (this.state.canStartNextRound() && this.state.allPlayersReady()) {
+        this.handleNextRound();
+      }
     }
+    this.playerSessions.delete(client.sessionId);
+
   }
 
   onDispose() {
     console.log("WordleRoom disposed:", this.roomId);
+    this.stopSnapshotCleanupCron()
   }
 
   private handleGuess(client: Client, guess: string) {
@@ -175,7 +257,7 @@ export class WordleRoom extends Room<WordleGameState> {
       return;
     }
 
-    if (guess.length !== 5 || player.currentRow >= 6) {
+    if (guess.length !== 5 || player.currentRow > 5) {
       return;
     }
     const persistentId = this.playerSessions.get(client.sessionId);
@@ -208,24 +290,24 @@ export class WordleRoom extends Room<WordleGameState> {
       player.gameStatus = "won";
       player.completionTime = Date.now() - (this.state.roundStartTime || 0);
       player.isReady = false;
-      // Broadcast player won
-      //   this.broadcast('playerWon', {
-      //     playerId: client.sessionId,
-      //     playerName: player.name,
-      //     completionTime: player.completionTime,
-      //     rowsUsed: player.currentRow + 1
-      //   });
-
+      this.state.getAllPlayers().forEach((player) => {
+        const score = this.state.calculatePlayerScore(player);
+        //   player.roundScores.push(score);
+        player.totalScore += score;
+      });
       // Check if round should end
       this.checkRoundEnd();
     } else {
-      player.currentRow++;
-      player.isReady = false; // Reset ready state after guess
       // Check if player lost (used all rows)
-      if (player.currentRow >= 6) {
+      if (player.currentRow > 5) {
         player.gameStatus = "lost";
+        player.isReady = false; // Reset ready state after guess
+
         this.checkRoundEnd();
+        return
       }
+      player.currentRow++;
+
     }
 
     // Send guess result back to player
@@ -247,10 +329,10 @@ export class WordleRoom extends Room<WordleGameState> {
       guesses: guesses.filter((g) => g.length > 0), // Only show non-empty guesses in log
     });
 
-    client.send("private_player_guesses", {
+    client.send(SOCKET_MESSAGES.PLAYER_GUESSES, {
       guesses: guesses,
       roundNumber: this.state.currentRound,
-      persistentId: persistentId,
+      // persistentId: persistentId,
       // Add any other private data here
     });
   }
@@ -274,11 +356,11 @@ export class WordleRoom extends Room<WordleGameState> {
   private handleNextRound() {
     if (!this.state.canStartNextRound()) return;
 
-    const nextWord = this.getWordForRound(this.state.currentRound + 1);
-
+    // const nextWord = this.getWordForRound(this.state.currentRound + 1);
+    const nextWord = 'HELLO'
     // Clear old round data and snapshots
-    this.clearOldRoundData();
-    this.cleanupOldSnapshots(2); // Keep snapshots for last 2 rounds
+    //this.clearOldRoundData();
+    // this.cleanupOldSnapshots(2); // Keep snapshots for last 2 rounds
 
     // Start the next round (this will reset player states)
     this.state.startNextRound(nextWord);
@@ -297,10 +379,10 @@ export class WordleRoom extends Room<WordleGameState> {
     // Send fresh private data to all clients
     this.syncAllPlayersRoundData();
   }
-  private clearOldRoundData() {
-    // Clean up old snapshots (older than current round)
-    this.cleanupOldSnapshots(0); // Remove all snapshots from previous rounds
-  }
+  // private clearOldRoundData() {
+  //   // Clean up old snapshots (older than current round)
+  //   this.cleanupOldSnapshots(0); // Remove all snapshots from previous rounds
+  // }
   /**
    * Initialize fresh round data for all currently connected players
    */
@@ -509,18 +591,39 @@ export class WordleRoom extends Room<WordleGameState> {
   private hasValidSnapshot(persistentId: string): boolean {
     const snapshot = this.playerSnapshots.get(persistentId);
     return (
-      snapshot !== undefined && snapshot.roundNumber === this.state.currentRound
+      snapshot !== undefined && snapshot.roundNumber === this.state.currentRound && this.state.gameState !=="finished"
     );
   }
 
   /**
    * Clean up old snapshots to prevent memory bloat
    */
-  private cleanupOldSnapshots(olderThanRounds: number = 2): void {
-    const cutoffRound = this.state.currentRound - olderThanRounds;
+  private cleanupOldSnapshots(olderThanRounds?: number, olderThanTime?: number): void {
+    // If no parameters provided, delete all snapshots
+    if (olderThanRounds === undefined && olderThanTime === undefined) {
+      const count = this.playerSnapshots.size;
+      this.playerSnapshots.clear();
+      console.log(`Cleaned up all ${count} snapshots`);
+      return;
+    }
+
+    const cutoffRound = olderThanRounds !== undefined ? this.state.currentRound - olderThanRounds : -Infinity;
+    const cutoffTime = olderThanTime ? Date.now() - olderThanTime : null;
 
     for (const [persistentId, snapshot] of this.playerSnapshots.entries()) {
-      if (snapshot.roundNumber < cutoffRound) {
+      let shouldDelete = false;
+
+      // Check if snapshot is older than specified rounds (if provided)
+      if (olderThanRounds !== undefined && snapshot.roundNumber < cutoffRound) {
+        shouldDelete = true;
+      }
+
+      // Check if snapshot is older than specified time (if provided)
+      if (cutoffTime && snapshot.disconnectedAt < cutoffTime) {
+        shouldDelete = true;
+      }
+
+      if (shouldDelete) {
         this.playerSnapshots.delete(persistentId);
         console.log(
           `Cleaned up old snapshot for ${snapshot.playerName} from round ${snapshot.roundNumber}`

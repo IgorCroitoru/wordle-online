@@ -66,7 +66,7 @@ export class Player extends Schema {
 export class WordleGameState extends Schema {
 //   @type('string') roomId: string = '';
   @type('string') gameState: RoomGameState = 'waiting';
-  @type('number') currentRound: number = 1;
+  @type('number') currentRound: number = 0;
   @type('number') totalRounds?: number ;
   @type('string') currentWord: string = '';
   @type('string') winner?: string;
@@ -129,18 +129,36 @@ export class WordleGameState extends Schema {
     this.gameState = 'finished';
     this.roundEndTime = Date.now();
     
-    // Calculate scores for this round
+    
     this.getAllPlayers().forEach(player => {
-      const score = this.calculatePlayerScore(player);
-    //   player.roundScores.push(score);
-      player.totalScore += score;
+      player.gameStatus = 'waiting';
+     
     });
   }
 
-  private calculatePlayerScore(player: Player): number {
+  public calculatePlayerScore(player: Player): number {
     if (player.gameStatus !== 'won') return 0;
+    let score = 0;
+    //if player is first to guess the word
+    const playingPlayers = this.getAllPlayers()
+      .filter(p => ['playing','won','lost'].includes(p.gameStatus) && p.id !== player.id);
+    if(playingPlayers.length >= 1){
+      const isFirstWhoWon  = playingPlayers.every(p => ['playing','lost'].includes(p.gameStatus));
+      if(isFirstWhoWon) {
+        score += 2; // Bonus for being the first to guess
+      }
+    }
     // Score: 7 points for row 0, 6 for row 1, etc., minimum 1 point
-    return Math.max(7 - player.currentRow, 1);
+    switch (player.currentRow) {
+      case 0: return score+=10;
+      case 1: return score+=9;
+      case 2: return score+=8;
+      case 3: return score+=7;
+      case 4: return score+=6;
+      case 5: return score+=5;
+      default: return score+=1; // For any row beyond 5, minimum score is
+    }
+    // return Math.max(7 - player.currentRow, 1);
   }
 
   canStartNextRound(): boolean {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, Input, Card, LoadingSpinner } from '@/components/ui';
 
@@ -11,6 +11,10 @@ export default function Home() {
   const [isJoining, setIsJoining] = useState(false);
   const router = useRouter();
 
+  useEffect(() => {
+    const name = localStorage.getItem('playerName') || '' ;
+    setPlayerName(name);
+  },[])
   const generateRoomCode = () => {
     return Math.random().toString(36).substring(2, 8).toUpperCase();
   };
@@ -24,6 +28,7 @@ export default function Home() {
     setIsCreating(true);
     try {
       const newRoomCode = generateRoomCode();
+      console.log('Creating room with code:', newRoomCode);
       // Store player name in localStorage for the game
       localStorage.setItem('playerName', playerName.trim());
       // Navigate to the room

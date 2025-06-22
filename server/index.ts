@@ -18,7 +18,7 @@ const gameServer = new Server({
 });
 
 // Register room handlers
-gameServer.define('wordle', WordleRoom).filterBy(["roomId"])
+gameServer.define('wordle', WordleRoom).filterBy(["wordleRoomId"])
 
 // Health check endpoint
 app.get('/health', (req: Request, res: Response) => {

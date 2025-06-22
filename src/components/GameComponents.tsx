@@ -1,11 +1,11 @@
-import { ReactNode, useEffect } from "react";
+import { ReactNode, use, useEffect, useState } from "react";
 import {
   type TileState,
   type Player,
   type WordleGameState,
   type RoomGameState,
 } from "../../server/schemas/WordleGameState";
-
+import { getRandomColor, isColorDark } from "../../utils";
 // Re-export for convenience
 export type {
   TileState,
@@ -103,15 +103,21 @@ export const GameGrid = ({
   className = "",
 }: GameGridProps) => {
   // Debug logging
-  console.log("GameGrid props:", { guesses, currentGuess, currentRow, evaluations, maxRows });
-    const renderRow = (rowIndex: number) => {
+  console.log("GameGrid props:", {
+    guesses,
+    currentGuess,
+    currentRow,
+    evaluations,
+    maxRows,
+  });
+  const renderRow = (rowIndex: number) => {
     const isCurrentRowActive = rowIndex === currentRow;
     const isSubmittedRow = rowIndex < currentRow;
     const hasGuessForRow = guesses[rowIndex] && guesses[rowIndex].length > 0;
 
     let letters: string[] = ["", "", "", "", ""];
     let states: TileState[] = ["empty", "empty", "empty", "empty", "empty"];
-    
+
     if (isCurrentRowActive && !hasGuessForRow) {
       // Current row being typed (only if no guess exists for this row)
       const currentLetters = currentGuess.split("");
@@ -184,7 +190,7 @@ export const KeyboardKey = ({
       onClick={onClick}
       disabled={disabled}
       className={`
-        ${isSpecialKey ? "special-key px-3 py-4 text-sm w-13" : "w-10 h-12"} 
+        ${isSpecialKey ? "special-key py-3 text-sm w-14" : "w-10 h-12"} 
         rounded font-bold transition-colors duration-150
         ${getKeyStyles()}
         ${className}
@@ -253,13 +259,11 @@ export const Keyboard = ({
 
 interface PlayerProgressProps {
   player: Player;
-  isCurrentPlayer?: boolean;
   className?: string;
 }
 
 export const PlayerProgress = ({
   player,
-  isCurrentPlayer = false,
   className = "",
 }: PlayerProgressProps) => {
   const getStatusColor = () => {
@@ -348,16 +352,180 @@ export const PlayerProgress = ({
     // </div>
   );
 };
+interface PlayerCardProps {
+  player: Player;
+  index: number;
+  isCurrentPlayer: boolean;
+  gameState?: RoomGameState;
+}
+export const PlayerCard = ({
+  player,
+  index,
+  gameState,
+  isCurrentPlayer = false,
+}: PlayerCardProps) => {
+  const [bg, setBg] = useState<string>("");
+  const [textColor, setTextColor] = useState<string>("text-white");
+  useEffect(() => {
+    const color = getRandomColor();
+    console.log(`PlayerCard color for ${player.name}:`, color);
+    setBg(color);
+    setTextColor(isColorDark(color) ? "text-white" : "text-black");
+  }, []);
+  return (
+    <div
+      key={player.id}
+      className={`
+              p-1.5 rounded-lg border-2 transition-all duration-200
+              ${
+                isCurrentPlayer
+                  ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+                  : "border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50"
+              }
+            `}
+    >
+      {/* Player Header */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center space-x-2 ml-2">
+          <div
+            className={`
+                  w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold
+                  ${`${textColor}`}
+                `}
+            style={{ backgroundColor: bg }}
+          >
+            {index + 1}
+          </div>{" "}
+          <div className="flex flex-col">
+            {gameState &&
+              (gameState === "finished" || gameState === "waiting") &&
+              (player.isReady ? (
+                <span className="text-xs text-green-500 dark:text-green-400">
+                  Ready
+                </span>
+              ) : (
+                <span className="text-xs text-red-500 dark:text-red-400">
+                  Not ready
+                </span>
+              ))}
+            <span
+              className={`font-medium ${
+                isCurrentPlayer
+                  ? "text-blue-700 dark:text-blue-300"
+                  : "text-gray-900 dark:text-white"
+              }`}
+            >
+              {player.name}
+              {isCurrentPlayer && " (You)"}
+            </span>
+            <div className="text-xs text-gray-500 dark:text-gray-400">
+              {player.completionTime && (
+                <span>Round: {Math.round(player.completionTime / 1000)}s</span>
+              )}
+            </div>
+            {/* {player.roundScores && player.roundScores.length > 0 && (
+                    <div className="text-xs text-gray-400 dark:text-gray-500">
+                      Rounds: {player.roundScores.join(', ')}
+                    </div>
+                  )} */}
+          </div>
+        </div>
+
+        <div className="flex flex-col items-end space-y-1">
+          <div className="flex items-center space-x-2">
+            <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+              {player.currentRow + 1}/6
+            </span>
+            <span className="text-lg">
+              {player.gameStatus === "won"
+                ? "🏆"
+                : player.gameStatus === "lost"
+                ? "❌"
+                : "🔄"}
+            </span>
+          </div>
+          {player.totalScore !== undefined && (
+            <div className="text-sm font-bold text-blue-600 dark:text-blue-400 mr-1.5">
+              {player.totalScore} pts
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Progress Bar */}
+      <div className="mb-3">
+        <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
+          <div
+            className={`
+                    h-2 rounded-full transition-all duration-300
+                    ${
+                      player.gameStatus === "won"
+                        ? "bg-green-500"
+                        : player.gameStatus === "lost"
+                        ? "bg-red-500"
+                        : "bg-blue-500"
+                    }
+                  `}
+            style={{ width: `${((player.currentRow + 1) / 6) * 100}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Integrated Mini Progress Grid */}
+      <div className="grid grid-cols-6 gap-1">
+        {Array.from({ length: 6 }, (_, rowIndex) => {
+          // Calculate the start and end indices for this row
+          const startIndex = rowIndex * 5;
+          const endIndex = startIndex + 5;
+          const rowData = player.progress.slice(startIndex, endIndex);
+
+          return (
+            <div
+              key={rowIndex}
+              className="bg-white dark:bg-gray-800 rounded-md p-1 border border-gray-200 dark:border-gray-600"
+            >
+              <div className="flex gap-0.5 justify-center">
+                {rowData.map((state, colIndex) => (
+                  <div
+                    key={colIndex}
+                    className={`
+                            w-2 h-2 rounded-sm transition-all duration-200
+                            ${state === "correct" ? "bg-green-500" : ""}
+                            ${state === "present" ? "bg-yellow-500" : ""}
+                            ${state === "absent" ? "bg-gray-500" : ""}
+                            ${
+                              state === "empty"
+                                ? "bg-gray-200 dark:bg-gray-600"
+                                : ""
+                            }
+                          `}
+                  />
+                ))}
+              </div>
+              <div className="text-center mt-0.5">
+                <span className="text-xs text-gray-400 dark:text-gray-500 font-medium">
+                  {rowIndex + 1}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
 
 interface PlayersLeaderboardProps {
   players: Player[];
   currentPlayerId: string;
+  gameState?: RoomGameState;
   className?: string;
 }
 
 export const PlayersLeaderboard = ({
   players,
   currentPlayerId,
+  gameState,
   className = "",
 }: PlayersLeaderboardProps) => {
   console.log("PlayersLeaderboard rendered with players:", players);
@@ -383,153 +551,21 @@ export const PlayersLeaderboard = ({
 
   return (
     <div
-      className={`bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-300 dark:border-gray-600 ${className}`}
+      className={`bg-white dark:bg-gray-800 rounded-lg p-1 border border-gray-300 dark:border-gray-600 ${className}`}
     >
-      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
-        <span className="mr-2">👥</span>
+      <h3 className="text-lg font-semibold text-gray-900 dark:text-white m-2.5 flex items-center">
         Players ({players.length})
       </h3>
 
       <div className="space-y-4">
         {sortedPlayers.map((player, index) => (
-          <div
+          <PlayerCard
             key={player.id}
-            className={`
-              p-3 rounded-lg border-2 transition-all duration-200
-              ${
-                player.id === currentPlayerId
-                  ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
-                  : "border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50"
-              }
-            `}
-          >
-            {/* Player Header */}
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center space-x-3">
-                <div
-                  className={`
-                  w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold
-                  ${
-                    index < 3
-                      ? index === 0
-                        ? "bg-yellow-500 text-white"
-                        : index === 1
-                        ? "bg-gray-400 text-white"
-                        : "bg-orange-600 text-white"
-                      : "bg-gray-100 dark:bg-gray-600 text-gray-600 dark:text-gray-300"
-                  }
-                `}
-                >
-                  {index + 1}
-                </div>{" "}
-                <div>
-                  <span
-                    className={`font-medium ${
-                      player.id === currentPlayerId
-                        ? "text-blue-700 dark:text-blue-300"
-                        : "text-gray-900 dark:text-white"
-                    }`}
-                  >
-                    {player.name}
-                    {player.id === currentPlayerId && " (You)"}
-                  </span>
-                  <div className="text-xs text-gray-500 dark:text-gray-400">
-                    {player.completionTime && (
-                      <span>
-                        Round: {Math.round(player.completionTime / 1000)}s •{" "}
-                      </span>
-                    )}
-                    Total: {player.totalScore || 0} pts
-                  </div>
-                  {/* {player.roundScores && player.roundScores.length > 0 && (
-                    <div className="text-xs text-gray-400 dark:text-gray-500">
-                      Rounds: {player.roundScores.join(', ')}
-                    </div>
-                  )} */}
-                </div>
-              </div>
-
-              <div className="flex flex-col items-end space-y-1">
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                    {player.currentRow + 1}/6
-                  </span>
-                  <span className="text-lg">
-                    {player.gameStatus === "won"
-                      ? "🏆"
-                      : player.gameStatus === "lost"
-                      ? "❌"
-                      : "🔄"}
-                  </span>
-                </div>
-                {player.totalScore !== undefined && (
-                  <div className="text-sm font-bold text-blue-600 dark:text-blue-400">
-                    {player.totalScore} pts
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Progress Bar */}
-            <div className="mb-3">
-              <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
-                <div
-                  className={`
-                    h-2 rounded-full transition-all duration-300
-                    ${
-                      player.gameStatus === "won"
-                        ? "bg-green-500"
-                        : player.gameStatus === "lost"
-                        ? "bg-red-500"
-                        : "bg-blue-500"
-                    }
-                  `}
-                  style={{ width: `${(player.currentRow / 6) * 100}%` }}
-                />
-              </div>
-            </div>
-
-            {/* Integrated Mini Progress Grid */}
-            <div className="grid grid-cols-6 gap-1">
-              {Array.from({ length: 6 }, (_, rowIndex) => {
-                // Calculate the start and end indices for this row
-                const startIndex = rowIndex * 5;
-                const endIndex = startIndex + 5;
-                const rowData = player.progress.slice(startIndex, endIndex);
-
-                return (
-                  <div
-                    key={rowIndex}
-                    className="bg-white dark:bg-gray-800 rounded-md p-1 border border-gray-200 dark:border-gray-600"
-                  >
-                    <div className="flex gap-0.5 justify-center">
-                      {rowData.map((state, colIndex) => (
-                        <div
-                          key={colIndex}
-                          className={`
-                            w-2 h-2 rounded-sm transition-all duration-200
-                            ${state === "correct" ? "bg-green-500" : ""}
-                            ${state === "present" ? "bg-yellow-500" : ""}
-                            ${state === "absent" ? "bg-gray-500" : ""}
-                            ${
-                              state === "empty"
-                                ? "bg-gray-200 dark:bg-gray-600"
-                                : ""
-                            }
-                          `}
-                        />
-                      ))}
-                    </div>
-                    <div className="text-center mt-0.5">
-                      <span className="text-xs text-gray-400 dark:text-gray-500 font-medium">
-                        {rowIndex + 1}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+            player={player}
+            index={index}
+            isCurrentPlayer={player.id === currentPlayerId}
+            gameState={gameState}
+          />
         ))}
       </div>
     </div>
@@ -580,11 +616,11 @@ export const RoomStatus = ({
 
   return (
     <div
-      className={`bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-300 dark:border-gray-600 ${className}`}
+      className={`bg-white dark:bg-gray-800 rounded-lg p-1.5 border border-gray-300 dark:border-gray-600 ${className}`}
     >
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center justify-between m-1">
         <div className="flex items-center space-x-2">
-          <span className="text-lg">{getStatusIcon()}</span>
+          {/* <span className="text-lg">{getStatusIcon()}</span> */}
           <span className="font-semibold text-gray-900 dark:text-white">
             Room Status
           </span>
@@ -602,9 +638,10 @@ export const RoomStatus = ({
 
       {winner && (
         <div className="text-sm text-green-600 dark:text-green-400 mt-2">
-          🏆 Winner: {players?.get(winner)?.name}
+          Winner: {players?.get(winner)?.name}
         </div>
       )}
     </div>
   );
 };
+

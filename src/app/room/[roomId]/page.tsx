@@ -46,16 +46,47 @@ export default function GameRoomColyseus() {
   // Get reactive state from Colyseus room
   const gameRoomState = room?.state;
   useEffect(() => {
-    guesses.forEach((guess, index) => {
-      if(!guess || guess.length === 0) return;
-      currentPlayer?.progress.slice(index * 5, (index + 1) * 5).forEach((tile, tileIndex) => {
-        setLetterStates((prev) => ({
-          ...prev,
-          [guess[tileIndex]]: tile,
-        }));
-      })
-    })
-  },[guesses,currentPlayer?.progress])
+  // Define priority order: correct > present > absent > empty
+  const tilePriority: Record<TileState, number> = {
+    'correct': 3,
+    'present': 2, 
+    'absent': 1,
+    'empty': 0
+  };
+
+  // Helper function to get the highest priority tile state
+  const getHigherPriorityTile = (current: TileState, newTile: TileState): TileState => {
+    return tilePriority[newTile] > tilePriority[current] ? newTile : current;
+  };
+
+  // Process each guess and build letter states with priority
+  const newLetterStates: Record<string, TileState> = {};
+  
+  guesses.forEach((guess, index) => {
+    if (!guess || guess.length === 0) return;
+    
+    // Get the tile states for this guess (5 tiles per row)
+    const guessTileStates = currentPlayer?.progress.slice(index * 5, (index + 1) * 5) || [];
+    
+    guessTileStates.forEach((tile, tileIndex) => {
+      const letter = guess[tileIndex];
+      if (!letter) return;
+      
+      // If this letter already has a state, compare priorities
+      if (newLetterStates[letter]) {
+        newLetterStates[letter] = getHigherPriorityTile(newLetterStates[letter], tile);
+      } else {
+        newLetterStates[letter] = tile;
+      }
+    });
+  });
+
+  // Update the state with the computed letter states
+  setLetterStates(newLetterStates);
+}, [guesses, currentPlayer?.progress]);
+    useEffect(() => {
+    setLetterStates({});
+  }, [currentRound]);
   useEffect(() => {
     // Get player name from localStorage
     const savedName = localStorage.getItem("playerName");
@@ -69,7 +100,8 @@ export default function GameRoomColyseus() {
     if (!hasJoinedRef.current && !isConnected && !room) {
       console.log("Attempting to join room:", roomId);
       hasJoinedRef.current = true;
-      joinRoom("wordle", { wordleRoomId: roomId, playerName: savedName });
+      const savedId = localStorage.getItem("persistentId") ?? undefined;
+      joinRoom("wordle", { wordleRoomId: roomId, playerName: savedName, persistentId: savedId });
     }
 
     // Cleanup on unmount
@@ -194,26 +226,12 @@ export default function GameRoomColyseus() {
       </div>
     );
   }
-  //   const allPlayers = Array.from(players.values());
-  //   const totalRounds = gameRoomState?.totalRounds || 3;
-  //   const gameComplete = gameRoomState?.isGameComplete() || false;
-  //   const overallWinner = gameRoomState?.getOverallWinner() || null;
-
-  // Create compatible RoomData for existing components
-  //   const roomData: RoomData = {
-  //     id: roomId,
-  //     gameState: gameRoomState.gameState as 'waiting' | 'playing' | 'finished',
-  //     players: allPlayers,
-  //     winner: gameRoomState.winner,
-  //     currentRound: gameRoomState.currentRound,
-  //     totalRounds: gameRoomState.totalRounds
-  //   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-yellow-50 dark:from-gray-900 dark:to-gray-800">
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 ">
         {/* Header */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-6 ">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
             Room: {roomId}
           </h1>
@@ -221,20 +239,18 @@ export default function GameRoomColyseus() {
             Welcome, {playerName}!
           </p>
           {/* Round Information */}
-          <div className="mt-4 bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-300 dark:border-gray-600 max-w-md mx-auto">
-            <div className="flex items-center justify-between mb-2">
+          <div className="mt-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-600 max-w-md mx-auto">
+            <div className="flex items-center justify-between m-1.5">
               <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
                 Round {currentRound}
               </span>
               <span className="text-sm font-bold text-blue-600 dark:text-blue-400">
                 Your Score: {currentPlayer?.totalScore || 0} pts
               </span>
-            </div>
-
-            {/* Player Ready Status */}
-            {gameState === "waiting" && (
-              <div className="flex items-center justify-center mb-2">
-                <span
+            </div>            {/* Player Ready Status and Button */}
+            {(gameState === "waiting" || gameState === 'finished') && (
+              <div className="flex items-center justify-center gap-3 mb-2">
+                {/* <span
                   className={`text-xs px-2 py-1 rounded-full ${
                     currentPlayer?.isReady
                       ? "bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200"
@@ -242,47 +258,34 @@ export default function GameRoomColyseus() {
                   }`}
                 >
                   {currentPlayer?.isReady ? "✅ Ready" : "⏳ Not Ready"}
-                </span>
+                </span> */}
+                <button
+                  onClick={handleToggleReady}
+                  className={`btn relative text-xs px-3 py-1 rounded-full transition-colors ${
+                    currentPlayer?.isReady
+                      ? "bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 hover:bg-red-200 dark:hover:bg-red-800"
+                      : "bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 hover:bg-green-200 dark:hover:bg-green-800"
+                  }`}
+                >
+                  {currentPlayer?.isReady ? "Not Ready" : "Ready"}
+                  {/* <ReadyCountBubble players={Array.from(players.values())}/> */}
+                  <div className="readyPulse absolute inline-flex items-center justify-center w-8 h-8 text-[10px] font-bold text-white bg-yellow-600 border-2 border-white rounded-full -top-2 -end-2 dark:border-gray-800">
+                    {Array.from(players.values()).filter(p => p.isReady).length}/{Array.from(players.values()).length}
+                    </div>
+                </button>
               </div>
             )}
-
-            {/* Round Progress Bar */}
-            {/* <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-2">
-              <div 
-                className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                style={{ width: `${(currentRound / totalRounds) * 100}%` }}
-              />
-            </div> */}
+           
+        
             {/* Game Status */}
             <div className="text-center mb-2">
-              {gameRoomState.gameState === "waiting" && (
-                <span className="text-xs px-2 py-1 bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 rounded-full">
-                  ⏳ Waiting for players
-                </span>
-              )}
+ 
               {gameRoomState.gameState === "playing" && (
-                <span className="text-xs px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded-full">
-                  🎯 Round {currentRound} in Progress
+                <span className="text-sm font-semibold me-2 px-2.5 py-0.5 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded-sm ms-2">
+                  Round {currentRound} in Progress
                 </span>
               )}
-              {/* {gameRoomState.gameState === 'finished' && !gameComplete && (
-                <span className="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full">
-                  ✅ Round {currentRound} Complete
-                </span>
-              )}
-              {gameComplete && (
-                <span className="text-xs px-2 py-1 bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 rounded-full">
-                  🏆 Game Complete
-                </span>
-              )} */}
             </div>
-
-            {/* Round Scores */}
-            {/* {currentPlayer && currentPlayer.roundScores.length > 0 && (
-              <div className="text-xs text-gray-500 dark:text-gray-400">
-                Previous rounds: {Array.from(currentPlayer.roundScores).join(', ')} pts
-              </div>
-            )} */}
           </div>
         </div>
 
@@ -299,23 +302,24 @@ export default function GameRoomColyseus() {
             <PlayersLeaderboard
               players={Array.from(players.values())}
               currentPlayerId={currentPlayer?.id || ""}
+              gameState={gameState}
             />
           </div>
           {/* Main Game Area (Desktop) */}
           <div className="flex-1 max-w-2xl mx-auto lg:mx-0">
             <div className="text-center mb-4">
-              <div className="text-sm text-gray-500 dark:text-gray-400">
+              {/* <div className="text-sm text-gray-500 dark:text-gray-400">
                 Row: {(currentPlayer?.currentRow || 0) + 1}/6 | Status:{" "}
                 {currentPlayer?.gameStatus || "waiting"}
-              </div>
+              </div> */}
             </div>
             {/* Game Grid */}
             <div className="mb-8">
               {/* Debug information */}
-              <div className="text-xs text-gray-500 mb-2">
+              {/* <div className="text-xs text-gray-500 mb-2">
                 Debug - Guesses: {JSON.stringify(guesses)} | Evaluations length:{" "}
                 {evaluations.length}
-              </div>
+              </div> */}
               <GameGrid
                 guesses={guesses}
                 currentGuess={currentGuess}
@@ -327,99 +331,20 @@ export default function GameRoomColyseus() {
             </div>
             {/* Game Status Messages */}
             {currentPlayer?.gameStatus === "won" && (
-              <div className="text-center mb-6 p-4 bg-green-100 dark:bg-green-900 rounded-lg">
+              <div className="text-center mb-6 p-1 bg-green-100 dark:bg-green-900 rounded-lg">
                 <h2 className="text-xl font-bold text-green-800 dark:text-green-200">
                   🎉 Congratulations! You won!
                 </h2>
               </div>
             )}
             {currentPlayer?.gameStatus === "lost" && (
-              <div className="text-center mb-6 p-4 bg-red-100 dark:bg-red-900 rounded-lg">
+              <div className="text-center mb-6 p-1 bg-red-100 dark:bg-red-900 rounded-lg">
                 <h2 className="text-xl font-bold text-red-800 dark:text-red-200">
                   😔 Game Over! Better luck next time!
                 </h2>
               </div>
-            )}{" "}
-            {/* Ready/Control Buttons */}
-            {gameRoomState.gameState === "waiting" && (
-              <div className="text-center mb-6 p-4 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                <div className="mb-4">
-                  <button
-                    onClick={handleToggleReady}
-                    className={`btn ${
-                      currentPlayer?.isReady ? "btn-secondary" : "btn-primary"
-                    }`}
-                  >
-                    {currentPlayer?.isReady ? "Not Ready" : "Ready to Play"}
-                    {currentPlayer?.isReady ? " ❌" : " ✅"}
-                  </button>
-                </div>
-                <button onClick={handleStartRound} className="btn btn-primary">
-                  Start Game 🚀
-                </button>
-              </div>
-            )}
-            {gameRoomState.gameState === "finished" && (
-              //  && !gameComplete
-              <div className="text-center mb-6 p-4 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                <h2 className="text-xl font-bold text-blue-800 dark:text-blue-200 mb-2">
-                  Round {currentRound} Complete!
-                </h2>
-                <div className="mb-4">
-                  <button
-                    onClick={handleToggleReady}
-                    className={`btn ${
-                      currentPlayer?.isReady ? "btn-secondary" : "btn-primary"
-                    }`}
-                  >
-                    {currentPlayer?.isReady
-                      ? "Not Ready"
-                      : "Ready for Next Round"}
-                    {currentPlayer?.isReady ? " ❌" : " ✅"}
-                  </button>
-                </div>
-                <button onClick={handleNextRound} className="btn btn-primary">
-                  Start Round {currentRound + 1} 🚀
-                </button>
-              </div>
-            )}
-            {/* {gameComplete && (
-              <div className="text-center mb-6 p-6 bg-gradient-to-r from-yellow-100 to-orange-100 dark:from-yellow-900 dark:to-orange-900 rounded-lg border-2 border-yellow-300 dark:border-yellow-700">
-                <h2 className="text-2xl font-bold text-yellow-800 dark:text-yellow-200 mb-2">
-                  🏆 Game Complete! 🏆
-                </h2>
-                {overallWinner?.id === currentPlayer?.id ? (
-                  <div>
-                    <p className="text-xl text-yellow-700 dark:text-yellow-300 mb-2">
-                      Congratulations! You are the overall winner!
-                    </p>
-                    <p className="text-yellow-600 dark:text-yellow-400">
-                      Final Score: {currentPlayer?.totalScore || 0} points
-                    </p>
-                  </div>
-                ) : (
-                  <div>
-                    <p className="text-xl text-yellow-700 dark:text-yellow-300 mb-2">
-                      Game Over! Better luck next time!
-                    </p>
-                    <p className="text-yellow-600 dark:text-yellow-400">
-                      Your Final Score: {currentPlayer?.totalScore || 0} points
-                    </p>
-                    <p className="text-sm text-yellow-600 dark:text-yellow-400 mt-1">
-                      Winner: {overallWinner?.name || 'Unknown'}
-                    </p>
-                  </div>
-                )}
-                <div className="mt-4 space-x-4">
-                  <button
-                    onClick={() => router.push('/')}
-                    className="btn btn-secondary"
-                  >
-                    Back to Home 🏠
-                  </button>
-                </div>
-              </div>
-            )}            Virtual Keyboard */}
+            )}{" "}  
+            {/* Control Buttons */}        
             <div className="mb-8">
               <Keyboard
                 onLetterClick={handleLetterClick}
@@ -449,28 +374,9 @@ export default function GameRoomColyseus() {
                 ← Back to Home
               </button>
             </div>
-          </div>{" "}
-          {/* Right Sidebar - Connection Status */}
-          <div className="xl:w-80 space-y-4">
-            {/* Quick Ready Button for Desktop */}
-            {gameState === "waiting" && (
-              <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-300 dark:border-gray-600">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
-                  Game Status
-                </h3>
-                <button
-                  onClick={handleToggleReady}
-                  className={`btn ${
-                    currentPlayer?.isReady ? "btn-secondary" : "btn-primary"
-                  } w-full`}
-                >
-                  {currentPlayer?.isReady ? "Not Ready" : "Ready to Play"}
-                  {currentPlayer?.isReady ? " ❌" : " ✅"}
-                </button>
-              </div>
-            )}
-
-            <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-300 dark:border-gray-600">
+          </div>{" "}          {/* Right Sidebar - Connection Status */}
+          <div className="lg:w-80 space-y-4">
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-1 border border-gray-300 dark:border-gray-600">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
                 Connection Status
               </h3>
@@ -507,18 +413,18 @@ export default function GameRoomColyseus() {
           {/* Mobile Game Area - Top Priority */}
           <div className="mb-8">
             <div className="text-center mb-4">
-              <div className="text-sm text-gray-500 dark:text-gray-400">
+              {/* <div className="text-sm text-gray-500 dark:text-gray-400">
                 Row: {(currentPlayer?.currentRow || 0) + 1}/6 | Status:{" "}
                 {currentPlayer?.gameStatus || "waiting"}
-              </div>
+              </div> */}
             </div>
             {/* Game Grid */}
             <div className="mb-6">
               {/* Debug information */}
-              <div className="text-xs text-gray-500 mb-2">
+              {/* <div className="text-xs text-gray-500 mb-2">
                 Debug - Guesses: {JSON.stringify(guesses)} | Evaluations length:{" "}
                 {evaluations.length}
-              </div>
+              </div> */}
               <GameGrid
                 guesses={guesses}
                 currentGuess={currentGuess}
@@ -542,21 +448,9 @@ export default function GameRoomColyseus() {
                   😔 Game Over! Better luck next time!
                 </h2>
               </div>
-            )}
-            {/* Mobile Ready/Control Buttons */}
-            {gameState === "waiting" && (
+            )}            {/* Mobile Control Buttons */}
+            {/* {gameState === "waiting" && (
               <div className="text-center mb-6 p-4 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                <div className="mb-4">
-                  <button
-                    onClick={handleToggleReady}
-                    className={`btn ${
-                      currentPlayer?.isReady ? "btn-secondary" : "btn-primary"
-                    } w-full mb-2`}
-                  >
-                    {currentPlayer?.isReady ? "Not Ready" : "Ready to Play"}
-                    {currentPlayer?.isReady ? " ❌" : " ✅"}
-                  </button>
-                </div>
                 <button
                   onClick={handleStartRound}
                   className="btn btn-primary w-full"
@@ -564,25 +458,12 @@ export default function GameRoomColyseus() {
                   Start Game 🚀
                 </button>
               </div>
-            )}
+            )} */}
             {gameState === "finished" && (
               <div className="text-center mb-6 p-4 bg-blue-100 dark:bg-blue-900 rounded-lg">
                 <h2 className="text-xl font-bold text-blue-800 dark:text-blue-200 mb-2">
                   Round {currentRound} Complete!
                 </h2>
-                <div className="mb-4">
-                  <button
-                    onClick={handleToggleReady}
-                    className={`btn ${
-                      currentPlayer?.isReady ? "btn-secondary" : "btn-primary"
-                    } w-full mb-2`}
-                  >
-                    {currentPlayer?.isReady
-                      ? "Not Ready"
-                      : "Ready for Next Round"}
-                    {currentPlayer?.isReady ? " ❌" : " ✅"}
-                  </button>
-                </div>
                 <button
                   onClick={handleNextRound}
                   className="btn btn-primary w-full"
@@ -627,6 +508,7 @@ export default function GameRoomColyseus() {
               <PlayersLeaderboard
                 players={Array.from(players.values())}
                 currentPlayerId={currentPlayer?.id || ""}
+                gameState={gameState}
               />
             </div>
             {/* Back to Home Button */}

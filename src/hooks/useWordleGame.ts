@@ -14,6 +14,7 @@ import {
 interface RoomJoinOptions {
   playerName: string;
   wordleRoomId?: string;
+  persistentId?: string; // For reconnection
 }
 interface GameHookReturn {
   room: Room<WordleGameState> | null;
@@ -284,7 +285,10 @@ export const useWordleGame = (): GameHookReturn => {
             }
           }
         );
-
+        newRoom.onMessage(SOCKET_MESSAGES.JOINED_ROOM, (data) => {
+          // Store persistent ID in localStorage for reconnection
+          localStorage.setItem("persistentId", data.persistentId);
+        });
         // Handle round started message
         newRoom.onMessage("roundStarted", (data) => {
           console.log("Round started:", data);
@@ -309,8 +313,9 @@ export const useWordleGame = (): GameHookReturn => {
           console.error("Room error:", code, message);
           setError(`Room error: ${message}`);
         });
-        newRoom.onLeave((code) => {
+        newRoom.onLeave((code, reason) => {
           console.log("Left room with code:", code);
+          setError(`Left room: ${reason}`);
           setIsConnected(false);
           setRoom(null);
           setCurrentRound(1);
