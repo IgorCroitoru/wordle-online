@@ -7,6 +7,7 @@ export const SOCKET_MESSAGES = {
   PLAYER_GUESSES: 'player_guesses',
   START_ROUND: 'startRound',
   NEXT_ROUND: "nextRound",
+  ERROR: 'error',
 } as const;
 
 

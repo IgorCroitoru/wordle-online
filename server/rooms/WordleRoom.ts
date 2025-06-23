@@ -1,17 +1,13 @@
 import { Room, Client } from "colyseus";
 import { WordleGameState, Player } from "../schemas/WordleGameState";
 import { SOCKET_MESSAGES } from "../../shared/types/messages";
-// Word lists for each round
-const WORD_LISTS = [
-  ["HELLO", "WORLD", "GAMES", "PARTY", "MAGIC"],
-  ["BRAIN", "CHAIR", "FLAME", "PHONE", "TIGER"],
-  ["CLOUD", "DANCE", "EARTH", "FRUIT", "HOUSE"],
-];
+import { getRandomWord, isValidWord, isLanguageSupported } from "../words";
 
 interface JoinOptions {
   playerName: string;
   persistentId?: string; // Optional persistent ID for player
   wordleRoomId?: string;
+  language?: string; // Language for the game
 }
 
 interface GuessMessage {
@@ -47,11 +43,23 @@ export class WordleRoom extends Room<WordleGameState> {
   private cleanupInterval?: NodeJS.Timeout
   private CLEANUP_INTERVAL_MS = 2 * 60 * 1000; // 2 minutes
   private CLEANUP_OLDER_THAN_MS = 10 * 60 * 1000; // 10 minutes
+  private language: string = 'en'; // Default language
   maxClients = 6;
-
 
   onCreate(options: any) {
     console.log("Creating WordleRoom with options:", options);
+    
+    // Set language from options or default to English
+    this.language = options.language || 'en';
+    
+    // Validate language is supported
+    if (!isLanguageSupported(this.language)) {
+      console.warn(`Language ${this.language} not supported, defaulting to English`);
+      this.language = 'en';
+    }
+    
+    console.log(`WordleRoom created with language: ${this.language}`);
+    
     this.state = new WordleGameState(options.roomId || this.roomId);
     this.startSnapshotCleanupCron()
     console.log("WordleRoom created:", this.roomId);
@@ -246,7 +254,6 @@ export class WordleRoom extends Room<WordleGameState> {
     console.log("WordleRoom disposed:", this.roomId);
     this.stopSnapshotCleanupCron()
   }
-
   private handleGuess(client: Client, guess: string) {
     const player = this.state.getPlayer(client.sessionId);
     if (
@@ -260,6 +267,17 @@ export class WordleRoom extends Room<WordleGameState> {
     if (guess.length !== 5 || player.currentRow > 5) {
       return;
     }
+
+    // Validate the word exists in the dictionary
+    if (!isValidWord(guess, this.language)) {
+      // Send error message to client
+      client.send(SOCKET_MESSAGES.ERROR, {
+        message: "Word not found in dictionary",
+        type: "invalid_word"
+      });
+      return;
+    }
+
     const persistentId = this.playerSessions.get(client.sessionId);
     if (!persistentId) {
       console.error("No persistent ID found for session:", client.sessionId);
@@ -499,11 +517,19 @@ export class WordleRoom extends Room<WordleGameState> {
       }
     }
   }
-
   private getWordForRound(round: number): string {
-    const roundIndex = Math.min(round - 1, WORD_LISTS.length - 1);
-    const wordList = WORD_LISTS[roundIndex];
-    return wordList[Math.floor(Math.random() * wordList.length)];
+    try {
+      return getRandomWord(this.language);
+    } catch (error) {
+      console.error(`Error getting word for language ${this.language}:`, error);
+      // Fallback to English if current language fails
+      if (this.language !== 'en') {
+        console.log('Falling back to English');
+        return getRandomWord('en');
+      }
+      // If even English fails, use a hardcoded word
+      return 'HELLO';
+    }
   }
 
   private generateUUID(): string {

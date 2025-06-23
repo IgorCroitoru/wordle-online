@@ -4,6 +4,7 @@ import express, { Request, Response } from 'express';
 import cors from 'cors';
 import { WordleRoom } from './rooms/WordleRoom';
 import { WebSocketTransport } from '@colyseus/ws-transport';
+import { getAvailableLanguages, dictionaryManager } from './words';
 const port = Number(process.env.PORT || 2567);
 const app = express();
 
@@ -18,11 +19,24 @@ const gameServer = new Server({
 });
 
 // Register room handlers
-gameServer.define('wordle', WordleRoom).filterBy(["wordleRoomId"])
+gameServer.define('wordle', WordleRoom).filterBy(["wordleRoomId", "language"])
 
 // Health check endpoint
 app.get('/health', (req: Request, res: Response) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Get available languages
+app.get('/languages', (req: Request, res: Response) => {
+  try {
+    const languages = getAvailableLanguages();
+    res.json({
+      languages,
+      statistics: dictionaryManager.getStatistics()
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get languages' });
+  }
 });
 
 // Get available rooms
