@@ -271,9 +271,8 @@ export class WordleRoom extends Room<WordleGameState> {
     // Validate the word exists in the dictionary
     if (!isValidWord(guess, this.language)) {
       // Send error message to client
-      client.send(SOCKET_MESSAGES.ERROR, {
-        message: "Word not found in dictionary",
-        type: "invalid_word"
+      client.send(SOCKET_MESSAGES.INVALID_WORD, {
+        word: guess,
       });
       return;
     }

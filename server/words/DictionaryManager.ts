@@ -4,8 +4,9 @@ import * as path from 'path';
 export interface LanguageConfig {
   code: string;
   name: string;
-  words: string[];
-  exceptions: string[];
+  words: Set<string>;
+  exceptions: Set<string>;
+  wordsArray: string[]; // Keep array for random selection
 }
 
 export class DictionaryManager {
@@ -72,16 +73,15 @@ export class DictionaryManager {
     if (fs.existsSync(exceptionsFile)) {
       const content = fs.readFileSync(exceptionsFile, 'utf-8');
       exceptions = this.parseWordsFromContent(content);
-    }
-
-    // Filter and process words
-    const validWords = this.filterValidWords(rawWords, exceptions);
+    }    // Filter and process words
+    const validWords = this.filterValidWords(rawWords, exceptions, languageCode);
 
     const languageConfig: LanguageConfig = {
       code: languageCode,
       name: this.getLanguageName(languageCode),
-      words: validWords,
-      exceptions: exceptions.map(word => word.toLowerCase())
+      words: new Set(validWords),
+      exceptions: new Set(exceptions.map(word => word.toLowerCase())),
+      wordsArray: validWords
     };
 
     this.dictionaries.set(languageCode, languageConfig);
@@ -89,51 +89,8 @@ export class DictionaryManager {
     console.log(`📖 ${languageConfig.name} (${languageCode}): ${validWords.length} valid words`);
   }
 
-  /**
-   * Parse words from file content (handles comma-separated and newline-separated)
-   */
-  private parseWordsFromContent(content: string): string[] {
-    // First try comma separation, then newline separation
-    let words: string[] = [];
-    
-    if (content.includes(',')) {
-      // Comma-separated
-      words = content.split(',');
-    } else {
-      // Newline-separated
-      words = content.split(/\r?\n/);
-    }
 
-    return words
-      .map(word => word.trim())
-      .filter(word => word.length > 0)
-      .map(word => word.toLowerCase());
-  }
-
-  /**
-   * Filter words to only include valid 5-letter words without special characters
-   */
-  private filterValidWords(words: string[], exceptions: string[]): string[] {
-    const exceptionSet = new Set(exceptions.map(word => word.toLowerCase()));
-
-    return words
-      .filter(word => {
-        // Must be exactly 5 letters
-        if (word.length !== 5) return false;
-
-        // Must contain only letters (no spaces, hyphens, special characters)
-        if (!/^[a-zA-ZàáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿšžčćđßäöüÄÖÜ]+$/.test(word)) return false;
-
-        // Must not be in exceptions list
-        if (exceptionSet.has(word.toLowerCase())) return false;
-
-        return true;
-      })
-      .map(word => word.toUpperCase()) // Convert to uppercase for consistency
-      .filter((word, index, array) => array.indexOf(word) === index); // Remove duplicates
-  }
-
-  /**
+    /**
    * Get human-readable language name
    */
   private getLanguageName(code: string): string {
@@ -168,26 +125,102 @@ export class DictionaryManager {
 
     return languageNames[code] || code.toUpperCase();
   }
+  /**
+   * Parse words from file content (handles comma-separated and newline-separated)
+   */
+  private parseWordsFromContent(content: string): string[] {
+    // First try comma separation, then newline separation
+    let words: string[] = [];
+    
+    if (content.includes(',')) {
+      // Comma-separated
+      words = content.split(',');
+    } else {
+      // Newline-separated
+      words = content.split(/\r?\n/);
+    }
 
+    return words
+      .map(word => word.trim())
+      .filter(word => word.length > 0)
+      .map(word => word.toLowerCase());
+  }  /**
+   * Filter words to only include valid 5-letter words without special characters
+   */
+  private filterValidWords(words: string[], exceptions: string[], languageCode: string): string[] {
+    const exceptionSet = new Set(exceptions.map(word => word.toLowerCase()));
+    const uniqueWords = new Set<string>();
+
+    // Get language-specific character pattern
+    const charPattern = this.getLanguageCharacterPattern(languageCode);
+
+    for (const word of words) {
+      // Must be exactly 5 letters
+      if (word.length !== 5) continue;
+
+      // Must contain only valid characters for this language
+      if (!charPattern.test(word)) continue;
+
+      // Must not be in exceptions list
+      if (exceptionSet.has(word.toLowerCase())) continue;
+
+      // Add to unique words set
+      uniqueWords.add(word.toUpperCase());
+    }
+
+    return Array.from(uniqueWords);
+  }
+
+  /**
+   * Get language-specific character validation pattern
+   */
+  private getLanguageCharacterPattern(languageCode: string): RegExp {
+    const patterns: Record<string, RegExp> = {
+      // English and Western European
+      'en': /^[a-zA-Z]+$/,
+      'es': /^[a-zA-ZáéíóúüñÁÉÍÓÚÜÑ]+$/,
+      'fr': /^[a-zA-ZàáâäèéêëìíîïòóôöùúûüÿçÀÁÂÄÈÉÊËÌÍÎÏÒÓÔÖÙÚÛÜŸÇ]+$/,
+      'de': /^[a-zA-ZäöüßÄÖÜ]+$/,
+      'it': /^[a-zA-ZàáèéìíîóòúÀÁÈÉÌÍÎÓÒÚ]+$/,
+      'pt': /^[a-zA-ZáàâãéêíóôõúçÁÀÂÃÉÊÍÓÔÕÚÇ]+$/,
+      'ro': /^[a-zA-ZăâîșțĂÂÎȘȚ]+$/,
+      
+      // Cyrillic languages
+      'ru': /^[а-яёА-ЯЁ]+$/,
+      'bg': /^[а-яА-Я]+$/,
+      'sr': /^[а-яђћжшчџА-ЯЂЋЖШЧЏ]+$/,
+      'mk': /^[а-яѓќљњџА-ЯЃЌЉЊЏ]+$/,
+      
+      // Other scripts
+      'pl': /^[a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ]+$/,
+      'cs': /^[a-zA-ZáčďéěíňóřšťúůýžÁČĎÉĚÍŇÓŘŠŤÚŮÝŽ]+$/,
+      'sk': /^[a-zA-ZáäčďéíľĺňóôŕšťúýžÁÄČĎÉÍĽĹŇÓÔŔŠŤÚÝŽ]+$/,
+      'hu': /^[a-zA-ZáéíóöőúüűÁÉÍÓÖŐÚÜŰ]+$/,
+      'lt': /^[a-zA-ZąčęėįšųūžĄČĘĖĮŠŲŪŽ]+$/,
+      'lv': /^[a-zA-ZāčēģīķļņšūžĀČĒĢĪĶĻŅŠŪŽ]+$/,
+      'et': /^[a-zA-ZäöõüÄÖÕÜ]+$/,
+    };
+
+    return patterns[languageCode] || /^[a-zA-Z]+$/; // Default to basic Latin
+  }
   /**
    * Get a random word for a specific language
    */
   getRandomWord(languageCode: string = 'en'): string {
     const dictionary = this.dictionaries.get(languageCode);
     
-    if (!dictionary || dictionary.words.length === 0) {
+    if (!dictionary || dictionary.wordsArray.length === 0) {
       // Fallback to English if requested language not available
       const englishDict = this.dictionaries.get('en');
-      if (!englishDict || englishDict.words.length === 0) {
+      if (!englishDict || englishDict.wordsArray.length === 0) {
         throw new Error('No dictionaries available');
       }
       console.warn(`⚠️  Language ${languageCode} not available, using English`);
-      return englishDict.words[Math.floor(Math.random() * englishDict.words.length)];
+      return englishDict.wordsArray[Math.floor(Math.random() * englishDict.wordsArray.length)];
     }
 
-    return dictionary.words[Math.floor(Math.random() * dictionary.words.length)];
+    return dictionary.wordsArray[Math.floor(Math.random() * dictionary.wordsArray.length)];
   }
-
   /**
    * Check if a word is valid for a specific language
    */
@@ -197,9 +230,8 @@ export class DictionaryManager {
       return false;
     }
 
-    return dictionary.words.includes(word.toUpperCase());
+    return dictionary.words.has(word.toUpperCase());
   }
-
   /**
    * Get all available languages
    */
@@ -208,11 +240,10 @@ export class DictionaryManager {
       .map(dict => ({
         code: dict.code,
         name: dict.name,
-        wordCount: dict.words.length
+        wordCount: dict.words.size
       }))
       .sort((a, b) => a.name.localeCompare(b.name));
   }
-
   /**
    * Get dictionary statistics
    */
@@ -222,9 +253,9 @@ export class DictionaryManager {
     for (const [code, dict] of this.dictionaries) {
       stats[code] = {
         name: dict.name,
-        totalWords: dict.words.length,
-        exceptions: dict.exceptions.length,
-        sampleWords: dict.words.slice(0, 5) // First 5 words as sample
+        totalWords: dict.words.size,
+        exceptions: dict.exceptions.size,
+        sampleWords: dict.wordsArray.slice(0, 5) // First 5 words as sample
       };
     }
 
@@ -245,13 +276,12 @@ export class DictionaryManager {
   isLanguageSupported(languageCode: string): boolean {
     return this.dictionaries.has(languageCode);
   }
-
   /**
    * Get all words for a language (for debugging)
    */
   getAllWords(languageCode: string): string[] {
     const dictionary = this.dictionaries.get(languageCode);
-    return dictionary ? [...dictionary.words] : [];
+    return dictionary ? [...dictionary.wordsArray] : [];
   }
 }
 
