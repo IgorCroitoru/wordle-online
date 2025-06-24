@@ -1,22 +1,64 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Button, Input, Card, LoadingSpinner } from '@/components/ui';
+import { Button, Input, Card, LoadingSpinner, Select } from '@/components/ui';
+import { useWordleGame } from '@/contexts/WordleGameContext';
+import { GameRoomColyseus } from '@/components/GamePageComponent';
+
+interface Language {
+  code: string;
+  name: string;
+  wordCount: number;
+}
 
 export default function Home() {
   const [roomCode, setRoomCode] = useState('');
   const [playerName, setPlayerName] = useState('');
+  const [selectedLanguage, setSelectedLanguage] = useState('en');
+  const [availableLanguages, setAvailableLanguages] = useState<Language[]>([]);
+  const [isLoadingLanguages, setIsLoadingLanguages] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
-  const router = useRouter();
+  
+  const { 
+    createRoom, 
+    joinRoom, 
+    room, 
+    isConnected, 
+  } = useWordleGame();
 
   useEffect(() => {
     const name = localStorage.getItem('playerName') || '' ;
     setPlayerName(name);
+    
+    // Fetch available languages from server
+    fetchLanguages();
   },[])
-  const generateRoomCode = () => {
-    return Math.random().toString(36).substring(2, 8).toUpperCase();
+
+  const fetchLanguages = async () => {
+    try {
+      const response = await fetch('http://localhost:2567/languages');
+      if (response.ok) {
+        const data = await response.json();
+        setAvailableLanguages(data.languages || []);
+        
+        // Set default language from localStorage or fallback to 'en'
+        const savedLanguage = localStorage.getItem('selectedLanguage') || 'en';
+        if (data.languages.some((lang: Language) => lang.code === savedLanguage)) {
+          setSelectedLanguage(savedLanguage);
+        }
+      } else {
+        console.error('Failed to fetch languages');
+        // Fallback to English only
+        setAvailableLanguages([{ code: 'en', name: 'English', wordCount: 0 }]);
+      }
+    } catch (error) {
+      console.error('Error fetching languages:', error);
+      // Fallback to English only
+      setAvailableLanguages([{ code: 'en', name: 'English', wordCount: 0 }]);
+    } finally {
+      setIsLoadingLanguages(false);
+    }
   };
 
   const handleCreateRoom = async () => {
@@ -27,12 +69,13 @@ export default function Home() {
 
     setIsCreating(true);
     try {
-      const newRoomCode = generateRoomCode();
-      console.log('Creating room with code:', newRoomCode);
-      // Store player name in localStorage for the game
+      // Store player name and selected language in localStorage for the game
       localStorage.setItem('playerName', playerName.trim());
-      // Navigate to the room
-      router.push(`/room/${newRoomCode}`);
+      localStorage.setItem('selectedLanguage', selectedLanguage);
+      await createRoom({
+        playerName: playerName.trim(),
+        persistentId: localStorage.getItem('persistentId') || undefined,
+      });
     } catch (error) {
       console.error('Error creating room:', error);
       alert('Failed to create room. Please try again.');
@@ -54,19 +97,31 @@ export default function Home() {
 
     setIsJoining(true);
     try {
-      // Store player name in localStorage for the game
+      // Store player name and selected language in localStorage for the game
       localStorage.setItem('playerName', playerName.trim());
-      // Navigate to the room
-      router.push(`/room/${roomCode.trim().toUpperCase()}`);
+      localStorage.setItem('selectedLanguage', selectedLanguage);
+
+      await joinRoom({
+        wordleRoomId: roomCode.trim(),
+        playerName: playerName.trim(),
+        persistentId: localStorage.getItem('persistentId') || undefined,
+      });
     } catch (error) {
       console.error('Error joining room:', error);
-      alert('Failed to join room. Please try again.');
+      alert(`Failed to join room: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsJoining(false);
     }
   };
 
-  return (
+  // If connected to a room, show the game
+  if (isConnected && room) {
+    return (
+      <GameRoomColyseus />
+    );
+  }
+
+return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-yellow-50 dark:from-gray-900 dark:to-gray-800 flex flex-col items-center justify-center p-4">
       <div className="max-w-md w-full space-y-8">
         {/* Header */}
@@ -89,6 +144,19 @@ export default function Home() {
               value={playerName}
               onChange={setPlayerName}
               maxLength={20}
+            />
+
+            {/* Language Selection */}
+            <Select
+              label="Game Language"
+              options={availableLanguages.map(lang => ({
+                value: lang.code,
+                label: `${lang.name} (${lang.wordCount.toLocaleString()} words)`
+              }))}
+              value={selectedLanguage}
+              onChange={setSelectedLanguage}
+              loading={isLoadingLanguages}
+              placeholder="Select a language..."
             />
 
             {/* Create Room Section */}
@@ -191,5 +259,5 @@ export default function Home() {
         </div>
       </div>
     </div>
-  );
+  )
 }

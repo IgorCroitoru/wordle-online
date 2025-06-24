@@ -41,7 +41,7 @@
     --border-focus: #565758;
     --button-secondary: #3a3a3c;
     --shadow: rgba(255, 255, 255, 0.1);
-    
+    --glow-shadow: 0 0 0 3px rgba(106, 170, 100, 0.1);
     --hover-bg: rgba(255, 255, 255, 0.04);
     --active-bg: rgba(255, 255, 255, 0.08);
   }
@@ -225,4 +225,42 @@ body {
   }
   .readyPulse {
     animation: readyPulse 0.6s ease-in-out;
+  }
+  @keyframes shake {
+    0% {
+      margin-left: 0rem;
+    }
+    10% {
+      margin-left: 0.8rem;
+    }
+    20% {
+      margin-left: -0.8rem;
+    }
+    30% {
+      margin-left: 0.8rem;
+    }
+    40% {
+      margin-left: -0.8rem;
+    }
+    50% {
+      margin-left: 0.8rem;
+    }
+    60% {
+      margin-left: -0.8rem;
+    }
+    70% {
+      margin-left: 0.8rem;
+    }
+    80% {
+      margin-left: -0.8rem;
+    }
+    90% {
+      margin-left: 0.8rem;
+    }
+    100% {
+      margin-left: 0rem;
+    }
+  }
+  .shake {
+    animation: shake 0.8s ease-in-out;
   }

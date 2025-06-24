@@ -116,4 +116,66 @@ export const Card = ({ children, className = '' }: CardProps) => {
       {children}
     </div>
   );
+}
+
+interface SelectOption {
+  value: string;
+  label: string;
+}
+
+interface SelectProps {
+  label?: string;
+  options: SelectOption[];
+  value: string;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+  loading?: boolean;
+  className?: string;
+  placeholder?: string;
+}
+
+export const Select = ({
+  label,
+  options,
+  value,
+  onChange,
+  disabled = false,
+  loading = false,
+  className = '',
+  placeholder
+}: SelectProps) => {
+  return (
+    <div className={className}>
+      {label && (
+        <label key={label} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          {label}
+        </label>
+      )}
+      {loading ? (
+        <div className="flex items-center justify-center py-3 px-4 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-900">
+          <LoadingSpinner size="sm" />
+          <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">Loading...</span>
+        </div>
+      ) : (
+        <select
+          key={value}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          disabled={disabled}
+          className="w-full py-3 px-3 border-2 border-[var(--border)] dark:border-[var(--border)] rounded-lg focus:border-[var(--border-focus)]  focus:shadow-[var(--glow-shadow)] bg-white dark:bg-[var(--bg-primary)] text-gray-900 dark:text-white transition-colors duration-200"
+        >
+          {placeholder && (
+            <option value="" disabled>
+              {placeholder}
+            </option>
+          )}
+          {options.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      )}
+    </div>
+  );
 };

@@ -26,7 +26,7 @@ export interface RoomData {
 
 interface GameTileProps {
   letter: string;
-  state: TileState;
+  state: TileState | "wrong";
   className?: string;
 }
 
@@ -39,6 +39,8 @@ export const GameTile = ({ letter, state, className = "" }: GameTileProps) => {
         return "bg-yellow-500 border-yellow-500 text-white";
       case "absent":
         return "bg-gray-500 border-gray-500 text-white";
+      case "wrong":
+        return "bg-red-500 border-red-500 text-white";
       default: // empty
         return "border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800";
     }
@@ -60,7 +62,8 @@ export const GameTile = ({ letter, state, className = "" }: GameTileProps) => {
 
 interface GameRowProps {
   letters: string[];
-  states: TileState[];
+  states: (TileState | "wrong")[];
+  isWrongWord?: boolean;
   isCurrentRow?: boolean;
   className?: string;
 }
@@ -70,7 +73,16 @@ export const GameRow = ({
   states = ["empty", "empty", "empty", "empty", "empty"],
   isCurrentRow = false,
   className = "",
+  isWrongWord = false,
 }: GameRowProps) => {
+    
+   if(isWrongWord) {
+      className += " shake"
+      states = ["wrong", "wrong", "wrong", "wrong", "wrong"];
+   }
+   else {
+    
+   }
   return (
     <div className={`flex gap-1 justify-center ${className}`}>
       {letters.map((letter, index) => (
@@ -91,6 +103,7 @@ interface GameGridProps {
   currentRow: number;
   evaluations: TileState[][];
   maxRows?: number;
+  wrongRow?: number;
   className?: string;
 }
 
@@ -101,6 +114,7 @@ export const GameGrid = ({
   evaluations = [],
   maxRows = 6,
   className = "",
+  wrongRow
 }: GameGridProps) => {
   // Debug logging
   console.log("GameGrid props:", {
@@ -132,7 +146,7 @@ export const GameGrid = ({
       // Submitted row with evaluation OR row with guess (handles winning row)
       letters = guesses[rowIndex].split("");
       states = evaluations[rowIndex] || Array(5).fill("absent" as TileState);
-      console.log(`Row ${rowIndex} - letters:`, letters, "states:", states);
+      // console.log(`Row ${rowIndex} - letters:`, letters, "states:", states);
     }
 
     return (
@@ -140,6 +154,7 @@ export const GameGrid = ({
         key={rowIndex}
         letters={letters}
         states={states}
+        isWrongWord={wrongRow === rowIndex}
         isCurrentRow={isCurrentRowActive}
         className="mb-1"
       />
@@ -653,15 +668,14 @@ export const CopyRoom = ({ roomId, className = '' }: CopyRoomProps) => {
   const [copySuccess, setCopySuccess] = useState(false);
   const copyRoomLink = async () => {
     try {
-      const roomUrl = `${window.location.origin}/room/${roomId}`;
-      await navigator.clipboard.writeText(roomUrl);
+      await navigator.clipboard.writeText(roomId);
       setCopySuccess(true);
       setTimeout(() => setCopySuccess(false), 2000);
     } catch (err) {
       console.error("Failed to copy room link:", err);
       // Fallback for browsers that don't support clipboard API
       const textArea = document.createElement("textarea");
-      textArea.value = `${window.location.origin}/room/${roomId}`;
+      textArea.value = roomId
       document.body.appendChild(textArea);
       textArea.select();
       document.execCommand("copy");

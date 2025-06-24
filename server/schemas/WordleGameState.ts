@@ -73,9 +73,10 @@ export class WordleGameState extends Schema {
   @type({ map: Player }) players = new MapSchema<Player>();
   @type('number') roundStartTime?: number;
   @type('number') roundEndTime?: number;
-
-  constructor(roomId: string) {
+  @type('string') languageId: string
+  constructor(languageId: string = 'en') {
     super();
+    this.languageId = languageId;
     // this.roomId = roomId;
   }
 
