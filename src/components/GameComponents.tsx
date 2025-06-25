@@ -40,7 +40,7 @@ export const GameTile = ({ letter, state, className = "" }: GameTileProps) => {
       case "absent":
         return "bg-gray-500 border-gray-500 text-white";
       case "wrong":
-        return "bg-red-500 border-red-500 text-white";
+        return "bg-gray-800 border-red-400 text-white";
       default: // empty
         return "border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800";
     }
@@ -223,6 +223,7 @@ interface KeyboardProps {
   letterStates?: Record<string, TileState>;
   disabled?: boolean;
   className?: string;
+  languageCode?: string; // New prop for language selection
 }
 
 export const Keyboard = ({
@@ -232,12 +233,28 @@ export const Keyboard = ({
   letterStates = {},
   disabled = false,
   className = "",
+  languageCode = "en", // Default to English
 }: KeyboardProps) => {
-  const rows = [
-    ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
-    ["A", "S", "D", "F", "G", "H", "J", "K", "L"],
-    ["ENTER", "Z", "X", "C", "V", "B", "N", "M", "BACKSPACE"],
-  ];
+  // Define keyboard layouts for different languages
+  const getKeyboardLayout = (lang: string) => {
+    switch (lang) {
+      case "ru":
+        return [
+          ["Й", "Ц", "У", "К", "Е", "Н", "Г", "Ш", "Щ", "З", "Х"],
+          ["Ф", "Ы", "В", "А", "П", "Р", "О", "Л", "Д", "Ж", "Э"],
+          ["ENTER", "Я", "Ч", "С", "М", "И", "Т", "Ь", "Б", "Ю", "BACKSPACE"],
+        ];
+      case "en":
+      default:
+        return [
+          ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
+          ["A", "S", "D", "F", "G", "H", "J", "K", "L"],
+          ["ENTER", "Z", "X", "C", "V", "B", "N", "M", "BACKSPACE"],
+        ];
+    }
+  };
+
+  const rows = getKeyboardLayout(languageCode);
 
   const handleKeyClick = (key: string) => {
     if (disabled) return;
@@ -247,7 +264,8 @@ export const Keyboard = ({
     } else if (key === "BACKSPACE") {
       onBackspace();
     } else {
-      onLetterClick(key);
+      // Convert to uppercase for consistency
+      onLetterClick(key.toUpperCase());
     }
   };
 

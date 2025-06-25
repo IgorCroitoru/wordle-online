@@ -22,7 +22,10 @@ interface RoomJoinOptions {
 }
 
 interface WordleGameContextType {
+  setWrongWord: (word: { word: string; row: number } | null) => void;
+  wrongWord: { word: string; row: number } | null;
   currentRow: number;
+  languageId: string;
   wordleRoomId: string | null;
   room: Room<WordleGameState> | null;
   isConnected: boolean;
@@ -53,6 +56,7 @@ export const WordleGameProvider: React.FC<WordleGameProviderProps> = ({ children
   const [room, setRoom] = useState<Room<WordleGameState> | null>(null);
   const [guesses, setGuesses] = useState<string[]>([]);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [languageId, setLanguageId] = useState<string>('')
   const [isConnected, setIsConnected] = useState(false);
   const [currentPlayer, setCurrentPlayer] = useState<IPlayerData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -60,6 +64,7 @@ export const WordleGameProvider: React.FC<WordleGameProviderProps> = ({ children
   const [winner, setWinner] = useState<string | undefined>(undefined);
   const [gameState, setGameState] = useState<RoomGameState>("waiting");
   const [wordleRoomId, setWordleRoomId] = useState<string | null>(null);
+  const [wrongWord, setWrongWord] = useState<{word:string,row:number} | null>(null);
   const [players, setPlayers] = useState<Map<string, Player>>(
     new Map<string, Player>()
   );
@@ -189,6 +194,9 @@ export const WordleGameProvider: React.FC<WordleGameProviderProps> = ({ children
     });
 
     // Game state listeners
+    $(newRoom.state).listen("languageId", (value: string) => {
+      setLanguageId(value);
+    })
     $(newRoom.state).onChange(() => {
       console.log("Game state changed:", newRoom.state);
       setGameState(newRoom.state.gameState);
@@ -203,7 +211,7 @@ export const WordleGameProvider: React.FC<WordleGameProviderProps> = ({ children
     });
 
     newRoom.onMessage(SOCKET_MESSAGES.INVALID_WORD, (data: { word: string, row: number }) => {
-        
+        setWrongWord({ word: data.word, row: data.row });
     });
     // Message handlers
     newRoom.onMessage(SOCKET_MESSAGES.PLAYER_GUESSES, (data: PrivatePlayerGuessData) => {
@@ -240,6 +248,7 @@ export const WordleGameProvider: React.FC<WordleGameProviderProps> = ({ children
 
     newRoom.onLeave((code, reason) => {
       console.log("Left room with code:", code);
+      setLanguageId('');
       setCurrentRow(0);
       setWordleRoomId(null);
       setError(`Left room: ${reason}`);
@@ -262,6 +271,7 @@ export const WordleGameProvider: React.FC<WordleGameProviderProps> = ({ children
         console.error("Error leaving room:", error);
       }
     }
+    setLanguageId('');
     setCurrentRow(0);
     setWordleRoomId(null);
     setRoom(null);
@@ -452,6 +462,9 @@ export const WordleGameProvider: React.FC<WordleGameProviderProps> = ({ children
   }, [leaveRoom]);
 
   const value: WordleGameContextType = {
+    languageId,
+    setWrongWord,
+    wrongWord,
     currentRow,
     wordleRoomId,
     room,

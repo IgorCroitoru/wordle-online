@@ -35,6 +35,9 @@ export function GameRoomColyseus() {
     error,
     currentRow,
     wordleRoomId,
+    wrongWord,
+    setWrongWord,
+    languageId,
   } = useWordleGame();
 
   const [playerName, setPlayerName] = useState("");
@@ -43,9 +46,13 @@ export function GameRoomColyseus() {
   const [letterStates, setLetterStates] = useState<Record<string, TileState>>(
     {}
   );
+  
 
-  const hasJoinedRef = useRef(false); // Track if we've already attempted to join
 
+
+  // useEffect(() => {
+  //   console.log("Wrong word changed:", wrongWord);
+  // }, [wrongWord])
   // Get reactive state from Colyseus room
   const gameRoomState = room?.state;
   console.log("GameRoomColyseus state:", room);
@@ -93,6 +100,7 @@ export function GameRoomColyseus() {
     });
 
     // Update the state with the computed letter states
+    console.log("Updated letter states:", newLetterStates);
     setLetterStates(newLetterStates);
   }, [guesses, currentPlayer?.progress]);
   useEffect(() => {
@@ -132,10 +140,6 @@ export function GameRoomColyseus() {
   //     hasJoinedRef.current = false;
   //   }, [roomId]);
 
-  // Debug gameState changes in page component
-  useEffect(() => {
-    console.log("Page gameState changed:", gameState);
-  }, [gameState]);
   // Update local state when player progress changes
   useEffect(() => {
     if (currentPlayer) {
@@ -165,7 +169,7 @@ export function GameRoomColyseus() {
     useLayoutEffect(() => {
         setCurrentGuess("");
         // console.log("Current row changed:", currentPlayer?.currentRow);
-    }, [currentRow])
+    }, [currentRow,currentRound])
   const handleLetterClick = (letter: string) => {
     if (
       !currentPlayer ||
@@ -173,12 +177,14 @@ export function GameRoomColyseus() {
       currentGuess.length >= 5
     )
       return;
+    
     setCurrentGuess(currentGuess + letter);
   };
 
   const handleBackspace = () => {
     if (!currentPlayer || currentPlayer.gameStatus !== "playing") return;
     setCurrentGuess(currentGuess.slice(0, -1));
+    setWrongWord(null);
   };
 
   const handleEnter = () => {
@@ -188,7 +194,7 @@ export function GameRoomColyseus() {
       currentGuess.length !== 5
     )
       return;
-
+    setWrongWord(null);
     makeGuess(currentGuess);
     // setCurrentGuess("");
   };
@@ -217,8 +223,21 @@ export function GameRoomColyseus() {
         handleEnter();
       } else if (key === "BACKSPACE") {
         handleBackspace();
-      } else if (key.match(/^[A-Z]$/) && key.length === 1) {
-        handleLetterClick(key);
+            } else {
+        // Handle letter input based on selected language
+        if (languageId === "ru") {
+          // Russian keyboard support
+          const isRussianLetter = key.match(/^[А-Я]$/) && key.length === 1;
+          if (isRussianLetter) {
+            handleLetterClick(key);
+          }
+        } else {
+          // Default English keyboard support
+          const isEnglishLetter = key.match(/^[A-Z]$/) && key.length === 1;
+          if (isEnglishLetter) {
+            handleLetterClick(key);
+          }
+        }
       }
     };
 
@@ -343,6 +362,7 @@ export function GameRoomColyseus() {
                 currentGuess={currentGuess}
                 currentRow={currentRow || 0}
                 evaluations={evaluations}
+                wrongRow={wrongWord?.row}
                 maxRows={6}
                 className="mb-6"
               />
@@ -369,6 +389,7 @@ export function GameRoomColyseus() {
                 onEnter={handleEnter}
                 onBackspace={handleBackspace}
                 letterStates={letterStates}
+                languageCode={languageId}
                 disabled={
                   !currentPlayer ||
                   currentPlayer.gameStatus !== "playing" ||
@@ -445,6 +466,7 @@ export function GameRoomColyseus() {
                 currentGuess={currentGuess}
                 currentRow={currentRow || 0}
                 evaluations={evaluations}
+                wrongRow={wrongWord?.row}
                 maxRows={6}
                 className="mb-6"
               />
@@ -495,6 +517,7 @@ export function GameRoomColyseus() {
                 onEnter={handleEnter}
                 onBackspace={handleBackspace}
                 letterStates={letterStates}
+                languageCode={languageId}
                 disabled={
                   !currentPlayer ||
                   currentPlayer.gameStatus !== "playing" ||
