@@ -29,7 +29,12 @@
     "docker:prod": "docker-compose -f docker-compose.yml up -d",
     "docker:dev": "docker-compose up -d",
     "docker:rebuild": "docker-compose build --no-cache",
-    "docker:clean": "docker system prune -f && docker volume prune -f"
+    "docker:clean": "docker system prune -f && docker volume prune -f",
+    "deploy": "docker-compose build && docker-compose up -d",
+    "deploy:logs": "docker-compose logs -f nginx frontend backend",
+    "deploy:restart": "docker-compose restart",
+    "deploy:stop": "docker-compose down",
+    "deploy:status": "docker-compose ps"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"

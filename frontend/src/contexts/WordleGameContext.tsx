@@ -76,10 +76,7 @@ export const WordleGameProvider: React.FC<WordleGameProviderProps> = ({ children
 
   useEffect(() => {
     // Initialize Colyseus client
-    const serverUrl =
-      process.env.NODE_ENV === "production"
-        ? "wss://your-production-server.com"
-        : "ws://localhost:2567";
+    const serverUrl = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:2567";
 
     clientRef.current = new Client(serverUrl);
 
@@ -292,7 +289,8 @@ export const WordleGameProvider: React.FC<WordleGameProviderProps> = ({ children
 
     try {
       // Call backend endpoint to create room
-      const response = await fetch('http://localhost:2567/create-room', {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:2567";
+      const response = await fetch(`${backendUrl}/create-room`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -366,7 +364,8 @@ export const WordleGameProvider: React.FC<WordleGameProviderProps> = ({ children
 
     try {
       // Call backend endpoint to join room
-      const response = await fetch('http://localhost:2567/join-room', {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:2567";
+      const response = await fetch(`${backendUrl}/join-room`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
