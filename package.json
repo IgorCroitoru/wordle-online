@@ -4,18 +4,15 @@
   "private": true,
   "workspaces": [
     "frontend",
-    "backend",
-    "shared"
+    "backend"
   ],
   "scripts": {
     "dev": "concurrently \"npx yarn workspace frontend dev\" \"npx yarn workspace backend dev\"",
     "dev:frontend": "npx yarn workspace frontend dev",
     "dev:backend": "npx yarn workspace backend dev",
-    "dev:shared": "npx yarn workspace shared dev",
-    "build": "npx yarn workspace shared build && yarn workspace backend build && yarn workspace frontend build",
+    "build": "npx yarn workspace backend build && npx yarn workspace frontend build",
     "build:frontend": "npx yarn workspace frontend build",
     "build:backend": "npx yarn workspace backend build",
-    "build:shared": "npx yarn workspace shared build",
     "start": "concurrently \"npx yarn workspace backend start\" \"npx yarn workspace frontend start\"",
     "start:frontend": "npx yarn workspace frontend start",
     "start:backend": "npx yarn workspace backend start",

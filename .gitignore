@@ -113,5 +113,3 @@ frontend/out/
 frontend/build/
 backend/dist/
 backend/build/
-shared/dist/
-shared/build/
