@@ -13,7 +13,7 @@ export class DictionaryManager {
   private dictionaries: Map<string, LanguageConfig> = new Map();
   private dataPath: string;
 
-  constructor(dataPath: string = path.join(__dirname, '../../data')) {
+  constructor(dataPath: string = path.join(__dirname, '../data')) {
     this.dataPath = dataPath;
     this.loadAllDictionaries();
   }

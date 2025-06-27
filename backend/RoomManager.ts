@@ -1,4 +1,4 @@
-import { matchMaker } from 'colyseus';
+import { matchMaker } from '@colyseus/core';
 
 export class RoomManager {
   private static instance: RoomManager;

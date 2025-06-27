@@ -1,4 +1,4 @@
-import { Schema, type, MapSchema, ArraySchema } from '@colyseus/schema';
+import { ArraySchema, MapSchema, Schema, type } from "@colyseus/schema";
 
 export type TileState = 'empty' | 'absent' | 'present' | 'correct';
 export type GameStatus = 'waiting' | 'playing' | 'won' | 'lost';

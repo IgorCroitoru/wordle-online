@@ -1,0 +1,27 @@
+{
+  "name": "backend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "nodemon --exec \"ts-node --project tsconfig.json index.ts\"",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@colyseus/core": "0.16.10",
+    "@colyseus/schema": "3.0.18",
+    "@colyseus/ws-transport": "0.16.3",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
+    "colyseus": "0.16.3",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "ts-node": "^10.9.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.1",
+    "nodemon": "^3.1.10",
+    "typescript": "^5"
+  }
+}

@@ -1,38 +1,40 @@
 {
-  "name": "wordle-online",
+  "name": "wordle-online-monorepo",
   "version": "0.1.0",
   "private": true,
+  "workspaces": [
+    "frontend",
+    "backend",
+    "shared"
+  ],
   "scripts": {
-    "dev": "next dev --turbopack",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
-    "server": "ts-node --project server/tsconfig.json server/index.ts",
-    "server:dev": "npx nodemon --exec \"ts-node --project server/tsconfig.json server/index.ts\""
-  },
-  "dependencies": {
-    "@colyseus/schema": "^3.0.41",
-    "@types/cors": "^2.8.19",
-    "@types/express": "^5.0.3",
-    "colyseus": "^0.16.4",
-    "colyseus.js": "^0.16.19",
-    "cors": "^2.8.5",
-    "express": "^5.1.0",
-    "next": "15.3.4",
-    "nodemon": "^3.1.10",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "ts-node": "^10.9.2"
+    "dev": "concurrently \"npx yarn workspace frontend dev\" \"npx yarn workspace backend dev\"",
+    "dev:frontend": "npx yarn workspace frontend dev",
+    "dev:backend": "npx yarn workspace backend dev",
+    "dev:shared": "npx yarn workspace shared dev",
+    "build": "npx yarn workspace shared build && yarn workspace backend build && yarn workspace frontend build",
+    "build:frontend": "npx yarn workspace frontend build",
+    "build:backend": "npx yarn workspace backend build",
+    "build:shared": "npx yarn workspace shared build",
+    "start": "concurrently \"npx yarn workspace backend start\" \"npx yarn workspace frontend start\"",
+    "start:frontend": "npx yarn workspace frontend start",
+    "start:backend": "npx yarn workspace backend start",
+    "lint": "npx yarn workspace frontend lint",
+    "lint:frontend": "npx yarn workspace frontend lint",
+    "type-check": "npx yarn workspaces run type-check",
+    "type-check:frontend": "npx yarn workspace frontend type-check",
+    "type-check:backend": "npx yarn workspace backend type-check",
+    "clean": "yarn workspaces run clean",
+    "docker:build": "docker-compose build",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "docker:prod": "docker-compose -f docker-compose.yml up -d",
+    "docker:dev": "docker-compose up -d",
+    "docker:rebuild": "docker-compose build --no-cache",
+    "docker:clean": "docker system prune -f && docker volume prune -f"
   },
   "devDependencies": {
-    "@eslint/eslintrc": "^3",
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20.19.1",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "15.3.4",
-    "tailwindcss": "^4",
-    "typescript": "^5"
+    "concurrently": "^8.2.2"
   }
 }

@@ -1,11 +1,12 @@
-import { Server, matchMaker } from 'colyseus';
+import { Server } from '@colyseus/core';
 import { createServer } from 'http';
 import express from 'express';
 import type { Request, Response, RequestHandler } from 'express';
 import cors from 'cors';
 import { WordleRoom } from './rooms/WordleRoom';
 import { WebSocketTransport } from '@colyseus/ws-transport';
-import { getAvailableLanguages, dictionaryManager } from './words';
+import { getAvailableLanguages } from './words';
+import { dictionaryManager } from './words/DictionaryManager';
 import { RoomManager } from './RoomManager';
 const port = Number(process.env.PORT || 2567);
 const app = express();

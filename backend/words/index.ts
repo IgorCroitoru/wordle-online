@@ -1,4 +1,4 @@
-export { DictionaryManager, dictionaryManager, LanguageConfig } from './DictionaryManager';
+
 
 // Helper functions using the singleton instance
 import { dictionaryManager } from './DictionaryManager';

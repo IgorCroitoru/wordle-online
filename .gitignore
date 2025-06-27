@@ -1,44 +1,117 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
-/node_modules
+node_modules/
+*/node_modules/
 /.pnp
 .pnp.*
+
+# yarn files
 .yarn/*
 !.yarn/patches
 !.yarn/plugins
 !.yarn/releases
 !.yarn/versions
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+
+# lock files from other package managers (keep yarn.lock)
+package-lock.json
+*/package-lock.json
+pnpm-lock.yaml
+*/pnpm-lock.yaml
 
 # files
 word-parser.js
 
+# environment variables
+.env
+.env.*
+!.env.example
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Docker
+ssl/
+
 # testing
-/coverage
+coverage/
+*/coverage/
+.nyc_output
 
-# next.js
-/.next/
-/out/
+# next.js (frontend workspace)
+.next/
+*/. next/
+out/
+*/out/
+next-env.d.ts
+*/next-env.d.ts
 
-# production
-/build
+# production builds
+build/
+*/build/
+dist/
+*/dist/
+
+# typescript
+*.tsbuildinfo
+*/*.tsbuildinfo
 
 # misc
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 *.pem
 
-# debug
+# logs
+logs
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# ide files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# os generated files
+.DS_Store
+Thumbs.db
 
 # vercel
 .vercel
 
-# typescript
-*.tsbuildinfo
-next-env.d.ts
+# temporary folders
+tmp/
+temp/
+.cache/
+
+# monorepo specific
+lerna-debug.log*
+
+# workspace specific ignores
+frontend/.next/
+frontend/out/
+frontend/build/
+backend/dist/
+backend/build/
+shared/dist/
+shared/build/

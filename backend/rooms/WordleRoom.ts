@@ -1,7 +1,7 @@
-import { Room, Client } from "colyseus";
+import { Client, Room } from "@colyseus/core";
 import { WordleGameState, Player } from "../schemas/WordleGameState";
-import { SOCKET_MESSAGES } from "../../shared/types/messages";
-import { getRandomWord, isValidWord, isLanguageSupported, dictionaryManager } from "../words";
+import { getRandomWord, isValidWord, isLanguageSupported } from "../words";
+import { SOCKET_MESSAGES } from "../types";
 
 interface JoinOptions {
   playerName: string;

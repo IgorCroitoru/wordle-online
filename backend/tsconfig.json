@@ -10,14 +10,18 @@
     "strict": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "outDir": "./dist",
+    "rootDir": "./",
+    "baseUrl": ".",
+    "paths": {
+    }
   },
   "include": [
     "./**/*.ts"
   ],
   "exclude": [
-    "../src/**/*",
-    "../dist/**/*",
-    "../node_modules/**/*"
+    "dist/**/*",
+    "node_modules/**/*"
   ]
 }
