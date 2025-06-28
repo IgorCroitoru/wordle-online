@@ -290,6 +290,7 @@ export const WordleGameProvider: React.FC<WordleGameProviderProps> = ({ children
     try {
       // Call backend endpoint to create room
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:2567";
+      console.log("backendUrl",backendUrl)
       const response = await fetch(`${backendUrl}/create-room`, {
         method: 'POST',
         headers: {

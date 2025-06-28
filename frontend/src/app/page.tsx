@@ -37,7 +37,7 @@ export default function Home() {
 
   const fetchLanguages = async () => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:2567';
+      const apiUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:2567';
       const response = await fetch(`${apiUrl}/languages`);
       if (response.ok) {
         const data = await response.json();
