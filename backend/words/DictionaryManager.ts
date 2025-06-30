@@ -14,6 +14,8 @@ export class DictionaryManager {
   private dataPath: string;
 
   constructor(dataPath: string = path.join(__dirname, '../data')) {
+    console.log("Current working directory:", __dirname);
+    console.log(`📂 Initializing DictionaryManager with data path: ${dataPath}`);
     this.dataPath = dataPath;
     this.loadAllDictionaries();
   }
