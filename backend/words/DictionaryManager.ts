@@ -13,8 +13,8 @@ export class DictionaryManager {
   private dictionaries: Map<string, LanguageConfig> = new Map();
   private dataPath: string;
 
-  constructor(dataPath: string = path.join(__dirname, '../data')) {
-    console.log("Current working directory:", __dirname);
+  constructor(dataPath: string = path.join(process.cwd(), 'backend', 'data')) {
+    console.log("Current working directory:", process.cwd());
     console.log(`📂 Initializing DictionaryManager with data path: ${dataPath}`);
     this.dataPath = dataPath;
     this.loadAllDictionaries();
