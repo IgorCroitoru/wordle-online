@@ -1,12 +1,12 @@
 import { Client, Room } from "@colyseus/core";
-import { WordleGameState, Player } from "../schemas/WordleGameState";
+import { GuessMateGameState, Player } from "../schemas/GuessMateGameState";
 import { getRandomWord, isValidWord, isLanguageSupported } from "../words";
 import { SOCKET_MESSAGES } from "../types";
 
 interface JoinOptions {
   playerName: string;
   persistentId?: string; // Optional persistent ID for player
-  wordleRoomId?: string;
+  guessMateRoomId?: string;
   language?: string; // Language for the game
 }
 
@@ -37,10 +37,10 @@ interface PlayerSnapshot {
   disconnectedAt: number;
 }
 interface RoomMetadata{
-  wordleRoomId: string; // Unique ID for the room
+  guessMateRoomId: string; // Unique ID for the room
 }
 
-export class WordleRoom extends Room<WordleGameState,RoomMetadata> {
+export class GuessMateRoom extends Room<GuessMateGameState,RoomMetadata> {
   private playerSnapshots = new Map<string, PlayerSnapshot>(); // persistentId -> snapshot
   private playerSessions = new Map<string, string>(); // sessionId -> persistentId
   private cleanupInterval?: NodeJS.Timeout
@@ -50,9 +50,9 @@ export class WordleRoom extends Room<WordleGameState,RoomMetadata> {
   maxClients = 6;
 
   onCreate(options: any) {
-    console.log("Creating WordleRoom with options:", options);
+    console.log("Creating GuessMateRoom with options:", options);
     this.setMetadata({
-      wordleRoomId: options.wordleRoomId
+      guessMateRoomId: options.guessMateRoomId
     })
     // Validate language is supported
     let language:string;
@@ -64,12 +64,12 @@ export class WordleRoom extends Room<WordleGameState,RoomMetadata> {
       language = options.language
     }
     
-    this.state = new WordleGameState(language);
+    this.state = new GuessMateGameState(language);
    
-    console.log(`WordleRoom created with language: ${this.state.languageId }`);
+    console.log(`GuessMateRoom created with language: ${this.state.languageId }`);
 
     this.startSnapshotCleanupCron()
-    console.log("WordleRoom created:", this.roomId);
+    console.log("GuessMateRoom created:", this.roomId);
     // Handle player guess
     this.onMessage(SOCKET_MESSAGES.GUESS, (client, message: GuessMessage) => {
       this.handleGuess(client, message.guess);
@@ -258,7 +258,7 @@ export class WordleRoom extends Room<WordleGameState,RoomMetadata> {
   }
 
   onDispose() {
-    console.log("WordleRoom disposed:", this.roomId);
+    console.log("GuessMateRoom disposed:", this.roomId);
     this.stopSnapshotCleanupCron()
   }
   private handleGuess(client: Client, guess: string) {
@@ -398,7 +398,7 @@ export class WordleRoom extends Room<WordleGameState,RoomMetadata> {
     // this.broadcast("roundStarted", {
     //   round: this.state.currentRound,
     //   totalRounds: this.state.totalRounds,
-    //   wordLength: 5, // Wordle standard
+    //   guessMatength: 5, // GuessMate standard
     //   maxGuesses: 6,
     // });
 
@@ -462,7 +462,7 @@ export class WordleRoom extends Room<WordleGameState,RoomMetadata> {
     // this.broadcast("gameStarted", {
     //   round: this.state.currentRound,
     //   totalRounds: this.state.totalRounds,
-    //   wordLength: 5,
+    //   guessMatength: 5,
     //   maxGuesses: 6,
     // });
   }
@@ -527,7 +527,9 @@ export class WordleRoom extends Room<WordleGameState,RoomMetadata> {
   }
   private getWordForRound(round?: number): string {
     try {
-      return getRandomWord(this.state.languageId );
+      const word = getRandomWord(this.state.languageId );
+      console.log(`Getting word (${word}) for round ${round || this.state.currentRound} in language ${this.state.languageId }`);
+      return word
     } catch (error) {
       console.error(`Error getting word for language ${this.state.languageId }:`, error);
       // Fallback to English if current language fails

@@ -685,7 +685,7 @@ export const CopyRoom = ({ roomId, className = '' }: CopyRoomProps) => {
       setCopySuccess(true);
       setTimeout(() => setCopySuccess(false), 2000);
     } catch (err) {
-      console.error("Failed to copy room link:", err);
+      console.error("Failed to copy room link:", err, navigator);
       // Fallback for browsers that don't support clipboard API
       const textArea = document.createElement("textarea");
       textArea.value = roomId

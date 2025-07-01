@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { WordleGameProvider } from "@/contexts/WordleGameContext";
+import { GuessMateGameProvider } from "@/contexts/GuessMateGameContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Wordle Online",
-  description: "Play Wordle with friends in real-time!",
+  title: "GuessMate Online",
+  description: "Play GuessMate with friends in real-time!",
 };
 
 export default function RootLayout({
@@ -28,9 +28,9 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <WordleGameProvider>
+        <GuessMateGameProvider>
           {children}
-        </WordleGameProvider>
+        </GuessMateGameProvider>
       </body>
     </html>
   );

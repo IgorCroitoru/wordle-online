@@ -1,6 +1,6 @@
 import { ArraySchema, MapSchema, Schema, type } from "@colyseus/schema";
 
-// Shared types between frontend and backend for Wordle multiplayer game
+// Shared types between frontend and backend for GuessMate multiplayer game
 export type TileState = 'empty' | 'absent' | 'present' | 'correct';
 export type GameStatus = 'waiting' | 'playing' | 'won' | 'lost';
 export type RoomGameState = 'waiting' | 'playing' | 'finished';
@@ -16,7 +16,7 @@ export class Player extends Schema {
   @type('number') totalScore: number = 0;
   @type([ 'string' ]) progress = new ArraySchema<TileState>();
 }
-export class WordleGameState extends Schema {
+export class GuessMateGameState extends Schema {
 //   @type('string') roomId: string = '';
   @type('string') gameState: RoomGameState = 'waiting';
   @type('number') currentRound: number = 0;

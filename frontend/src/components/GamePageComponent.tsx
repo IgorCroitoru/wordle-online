@@ -2,7 +2,7 @@
 
 import {  useRouter } from "next/navigation";
 import { useEffect, useState, useLayoutEffect, useCallback } from "react";
-import { useWordleGame } from "@/contexts/WordleGameContext";
+import { useGuessMateGame } from "@/contexts/GuessMateGameContext";
 import {
   GameGrid,
   Keyboard,
@@ -29,11 +29,11 @@ export function GameRoomColyseus() {
     setReady,
     error,
     currentRow,
-    wordleRoomId,
+    guessMateRoomId,
     wrongWord,
     setWrongWord,
     languageId,
-  } = useWordleGame();
+  } = useGuessMateGame();
 
   const [currentGuess, setCurrentGuess] = useState("");
   const [evaluations, setEvaluations] = useState<TileState[][]>([]);
@@ -115,7 +115,7 @@ export function GameRoomColyseus() {
   //       hasJoinedRef.current = true;
   //       const savedId = localStorage.getItem("persistentId") ?? undefined;
   //       joinRoom({
-  //         wordleRoomId: roomId,
+  //         guessMateRoomId: roomId,
   //         playerName: savedName,
   //         persistentId: savedId,
   //       });
@@ -314,7 +314,7 @@ export function GameRoomColyseus() {
         <div className="hidden lg:flex lg:flex-row gap-8 max-w-7xl mx-auto">
           {/* Left Sidebar - Multiplayer Info (Desktop Only) */}
           <div className="lg:w-80 space-y-2">
-            <CopyRoom roomId={wordleRoomId ?? ""} className="" />
+            <CopyRoom roomId={guessMateRoomId ?? ""} className="" />
             <RoomStatus
               gameState={gameState}
               winner={winner}
@@ -528,7 +528,7 @@ export function GameRoomColyseus() {
           <div className="space-y-6">
             {/* Room Status and Leaderboard */}
             <div className="grid grid-cols-1 gap-4">
-              <CopyRoom roomId={wordleRoomId ?? ""} className="w-full" />
+              <CopyRoom roomId={guessMateRoomId ?? ""} className="w-full" />
 
                             {/* Player Ready Status and Button - Mobile */}
             {(gameState === "waiting" || gameState === "finished") && (

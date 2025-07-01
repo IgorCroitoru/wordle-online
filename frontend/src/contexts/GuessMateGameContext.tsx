@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useCallback, useRef, useEffect, useState, ReactNode } from 'react';
 import { Client, getStateCallbacks, JoinOptions, Room } from "colyseus.js";
 import {
-  WordleGameState,
+  GuessMateGameState,
   Player,
   RoomGameState,
   TileState,
@@ -16,17 +16,17 @@ import {
 
 interface RoomJoinOptions {
   playerName: string;
-  wordleRoomId?: string;
+  guessMateRoomId?: string;
   persistentId?: string; // For reconnection
 }
 
-interface WordleGameContextType {
+interface GuessMateGameContextType {
   setWrongWord: (word: { word: string; row: number } | null) => void;
   wrongWord: { word: string; row: number } | null;
   currentRow: number;
   languageId: string;
-  wordleRoomId: string | null;
-  room: Room<WordleGameState> | null;
+  guessMateRoomId: string | null;
+  room: Room<GuessMateGameState> | null;
   isConnected: boolean;
   currentPlayer: IPlayerData | null;
   players: Map<string, Player>;
@@ -44,15 +44,15 @@ interface WordleGameContextType {
   error: string | null;
 }
 
-const WordleGameContext = createContext<WordleGameContextType | undefined>(undefined);
+const GuessMateGameContext = createContext<GuessMateGameContextType | undefined>(undefined);
 
-interface WordleGameProviderProps {
+interface GuessMateGameProviderProps {
   children: ReactNode;
 }
 
-export const WordleGameProvider: React.FC<WordleGameProviderProps> = ({ children }) => {
+export const GuessMateGameProvider: React.FC<GuessMateGameProviderProps> = ({ children }) => {
   const [currentRow, setCurrentRow] = useState<number>(0);
-  const [room, setRoom] = useState<Room<WordleGameState> | null>(null);
+  const [room, setRoom] = useState<Room<GuessMateGameState> | null>(null);
   const [guesses, setGuesses] = useState<string[]>([]);
   const [isConnecting, setIsConnecting] = useState(false);
   const [languageId, setLanguageId] = useState<string>('')
@@ -62,7 +62,7 @@ export const WordleGameProvider: React.FC<WordleGameProviderProps> = ({ children
   const [currentRound, setCurrentRound] = useState<number>(0);
   const [winner, setWinner] = useState<string | undefined>(undefined);
   const [gameState, setGameState] = useState<RoomGameState>("waiting");
-  const [wordleRoomId, setWordleRoomId] = useState<string | null>(null);
+  const [guessMateRoomId, setGuessMateRoomId] = useState<string | null>(null);
   const [wrongWord, setWrongWord] = useState<{word:string,row:number} | null>(null);
   const [players, setPlayers] = useState<Map<string, Player>>(
     new Map<string, Player>()
@@ -94,7 +94,7 @@ export const WordleGameProvider: React.FC<WordleGameProviderProps> = ({ children
     };
   }, [room, isConnecting]);
   // Reusable function to bind room events and state listeners
-  const bindRoomEvents = useCallback((newRoom: Room<WordleGameState>) => {
+  const bindRoomEvents = useCallback((newRoom: Room<GuessMateGameState>) => {
     const $ = getStateCallbacks(newRoom);
     
     // Player state listeners
@@ -235,7 +235,7 @@ export const WordleGameProvider: React.FC<WordleGameProviderProps> = ({ children
       console.log("Left room with code:", code);
       setLanguageId('');
       setCurrentRow(0);
-      setWordleRoomId(null);
+      setGuessMateRoomId(null);
       setError(`Left room: ${reason}`);
       setIsConnected(false);
       setRoom(null);
@@ -258,7 +258,7 @@ export const WordleGameProvider: React.FC<WordleGameProviderProps> = ({ children
     }
     setLanguageId('');
     setCurrentRow(0);
-    setWordleRoomId(null);
+    setGuessMateRoomId(null);
     setRoom(null);
     setIsConnected(false);
     setCurrentPlayer(null);
@@ -308,15 +308,15 @@ export const WordleGameProvider: React.FC<WordleGameProviderProps> = ({ children
         throw new Error(errorData.error || 'Failed to create room');
       }
 
-      const {seatReservation, wordleRoomId} = await response.json();
+      const {seatReservation, guessMateRoomId} = await response.json();
 
       // Check if this is still the current attempt
       if (connectionAttemptRef.current !== attemptId) {
         console.log("Connection attempt superseded, aborting");
         return;
       }      // Now join the created room using Colyseus client
-      const newRoom = await clientRef.current.consumeSeatReservation<WordleGameState>(seatReservation);
-      setWordleRoomId(wordleRoomId);
+      const newRoom = await clientRef.current.consumeSeatReservation<GuessMateGameState>(seatReservation);
+      setGuessMateRoomId(guessMateRoomId);
       // Check again if this is still the current attempt
       if (connectionAttemptRef.current !== attemptId) {
         console.log("Connection attempt superseded after join, leaving room");
@@ -352,7 +352,7 @@ export const WordleGameProvider: React.FC<WordleGameProviderProps> = ({ children
       return;
     }
 
-    if (!options.wordleRoomId) {
+    if (!options.guessMateRoomId) {
       throw new Error("Room ID is required to join a room");
     }
 
@@ -372,7 +372,7 @@ export const WordleGameProvider: React.FC<WordleGameProviderProps> = ({ children
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          wordleRoomId: options.wordleRoomId,
+          guessMateRoomId: options.guessMateRoomId,
           playerName: options.playerName,
           persistentId: options.persistentId || localStorage.getItem('persistentId'),
         }),
@@ -390,8 +390,8 @@ export const WordleGameProvider: React.FC<WordleGameProviderProps> = ({ children
         console.log("Connection attempt superseded, aborting");
         return;
       }      // Now join the room using Colyseus client
-      const newRoom = await clientRef.current.consumeSeatReservation<WordleGameState>(seatReservation);
-      setWordleRoomId(options.wordleRoomId);
+      const newRoom = await clientRef.current.consumeSeatReservation<GuessMateGameState>(seatReservation);
+      setGuessMateRoomId(options.guessMateRoomId);
       // Check again if this is still the current attempt
       if (connectionAttemptRef.current !== attemptId) {
         console.log("Connection attempt superseded after join, leaving room");
@@ -449,12 +449,12 @@ export const WordleGameProvider: React.FC<WordleGameProviderProps> = ({ children
     leaveRoom();
   }, [leaveRoom]);
 
-  const value: WordleGameContextType = {
+  const value: GuessMateGameContextType = {
     languageId,
     setWrongWord,
     wrongWord,
     currentRow,
-    wordleRoomId,
+    guessMateRoomId,
     room,
     isConnected,
     currentPlayer,
@@ -474,16 +474,16 @@ export const WordleGameProvider: React.FC<WordleGameProviderProps> = ({ children
   };
 
   return (
-    <WordleGameContext.Provider value={value}>
+    <GuessMateGameContext.Provider value={value}>
       {children}
-    </WordleGameContext.Provider>
+    </GuessMateGameContext.Provider>
   );
 };
 
-export const useWordleGame = (): WordleGameContextType => {
-  const context = useContext(WordleGameContext);
+export const useGuessMateGame = (): GuessMateGameContextType => {
+  const context = useContext(GuessMateGameContext);
   if (context === undefined) {
-    throw new Error('useWordleGame must be used within a WordleGameProvider');
+    throw new Error('useGuessMateGame must be used within a GuessMateGameProvider');
   }
   return context;
 };

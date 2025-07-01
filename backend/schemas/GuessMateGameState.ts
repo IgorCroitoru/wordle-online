@@ -63,7 +63,7 @@ export class Player extends Schema {
   }
 }
 
-export class WordleGameState extends Schema {
+export class GuessMateGameState extends Schema {
 //   @type('string') roomId: string = '';
   @type('string') gameState: RoomGameState = 'waiting';
   @type('number') currentRound: number = 0;
@@ -123,6 +123,7 @@ export class WordleGameState extends Schema {
       for (let i = 0; i < 30; i++) {
           player.progress[i] = 'empty';
       }
+      console.log(`Player ${player.name} (${player.id}) has started a new round: ${player.progress.toString()}`);
     });
   }
 

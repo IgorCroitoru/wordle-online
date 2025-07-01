@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Button, Input, Card, Select } from '@/components/ui';
-import { useWordleGame } from '@/contexts/WordleGameContext';
+import { useGuessMateGame } from '@/contexts/GuessMateGameContext';
 import { GameRoomColyseus } from '@/components/GamePageComponent';
 
 interface Language {
@@ -25,7 +25,7 @@ export default function Home() {
     joinRoom, 
     room, 
     isConnected, 
-  } = useWordleGame();
+  } = useGuessMateGame();
 
   useEffect(() => {
     const name = localStorage.getItem('playerName') || '' ;
@@ -103,7 +103,7 @@ export default function Home() {
       localStorage.setItem('selectedLanguage', selectedLanguage);
 
       await joinRoom({
-        wordleRoomId: roomCode.trim(),
+        guessMateRoomId: roomCode.trim(),
         playerName: playerName.trim(),
         persistentId: localStorage.getItem('persistentId') || undefined,
       });
@@ -128,10 +128,10 @@ return (
         {/* Header */}
         <div className="text-center fade-in">
           <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
-            Wordle Online
+            GuessMate Online
           </h1>
           <p className="text-gray-600 dark:text-gray-300">
-            Play Wordle with friends in real-time!
+            Play GuessMate with friends in real-time!
           </p>
         </div>
 

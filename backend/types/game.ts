@@ -1,4 +1,4 @@
-// Shared types between frontend and backend for Wordle multiplayer game
+// Shared types between frontend and backend for GuessMate multiplayer game
 
 export type TileState = 'empty' | 'absent' | 'present' | 'correct';
 export type GameStatus = 'waiting' | 'playing' | 'won' | 'lost';

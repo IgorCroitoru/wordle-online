@@ -20,13 +20,13 @@ export class RoomManager {
   }
 
   /**
-   * Checks if a room with the given wordleRoomId already exists
+   * Checks if a room with the given GuessMateRoomId already exists
    */
-  private async isRoomCodeTaken(wordleRoomId: string): Promise<boolean> {
+  private async isRoomCodeTaken(guessMateRoomId: string): Promise<boolean> {
     try {
       const existingRooms = await matchMaker.query({ 
-        name: 'wordle',
-        wordleRoomId: wordleRoomId
+        name: 'guessMate',
+        guessMateRoomId: guessMateRoomId
       });
       return existingRooms.length > 0;
     } catch (error) {
@@ -68,16 +68,16 @@ export class RoomManager {
    */
   async createRoomWithUniqueId(playerName: string,  persistentId?: string, language: string = 'en') {
     try {
-      const wordleRoomId = await this.generateUniqueRoomId();
+      const guessMateRoomId = await this.generateUniqueRoomId();
       
-      const seatReservation = await matchMaker.create('wordle', {
-        wordleRoomId,
+      const seatReservation = await matchMaker.create('guessMate', {
+        guessMateRoomId,
         language,
         playerName,
         persistentId
       });
 
-      return {seatReservation, wordleRoomId}
+      return {seatReservation, guessMateRoomId}
     } catch (error) {
       console.error('Error creating room with unique ID:', error);
       throw error;
@@ -85,15 +85,15 @@ export class RoomManager {
   }
 
   /**
-   * Joins an existing room by wordleRoomId
+   * Joins an existing room by guessMateRoomId
    */
-  async joinRoomByCode(wordleRoomId: string, playerName: string, persistentId?: string,language: string = 'en') {
+  async joinRoomByCode(guessMateRoomId: string, playerName: string, persistentId?: string,language: string = 'en') {
     try {
-      // Find room by wordleRoomId
+      // Find room by guessMateRoomId
       const availableRooms = await matchMaker.query();
         const filteredRooms = availableRooms.filter((room) => 
-            room.metadata?.wordleRoomId === wordleRoomId && 
-            room.name === "wordle"
+            room.metadata?.guessMateRoomId === guessMateRoomId && 
+            room.name === "guessMate"
         );
 
       if (filteredRooms.length === 0) {
@@ -121,10 +121,10 @@ export class RoomManager {
    */
   async getAllRooms() {
     try {
-      const rooms = await matchMaker.query({ name: 'wordle' });
+      const rooms = await matchMaker.query({ name: 'guessMate' });
       return rooms.map((room: any) => ({
         roomId: room.roomId,
-        wordleRoomId: room.metadata?.wordleRoomId || 'unknown',
+        guessMateRoomId: room.metadata?.guessMateRoomId || 'unknown',
         clients: room.clients,
         maxClients: room.maxClients,
         metadata: room.metadata

@@ -3,7 +3,7 @@ import { createServer } from 'http';
 import express from 'express';
 import type { Request, Response, RequestHandler } from 'express';
 import cors from 'cors';
-import { WordleRoom } from './rooms/WordleRoom';
+import { GuessMateRoom } from './rooms/GuessMateRoom';
 import { WebSocketTransport } from '@colyseus/ws-transport';
 import { getAvailableLanguages } from './words';
 import { dictionaryManager } from './words/DictionaryManager';
@@ -24,8 +24,8 @@ const gameServer = new Server({
 // Get RoomManager instance
 const roomManager = RoomManager.getInstance();
 // Register room handlers
- gameServer.define('wordle', WordleRoom)
-//   .filterBy(["wordleRoomId", "language"]);
+ gameServer.define('guessMate', GuessMateRoom)
+//   .filterBy(["GuessMateRoomId", "language"]);
 
 // Custom endpoint to create a room with generated unique ID
 const createRoomHandler: RequestHandler = async (req: Request, res: Response) => {
@@ -47,17 +47,17 @@ const createRoomHandler: RequestHandler = async (req: Request, res: Response) =>
 
 app.post('/create-room', createRoomHandler);
 
-// Custom endpoint to join existing room by wordleRoomId
+// Custom endpoint to join existing room by GuessMateRoomId
 const joinRoomHandler: RequestHandler = async (req: Request, res: Response) => {
   try {
-    const { wordleRoomId, playerName, persistentId, language = 'en' } = req.body;
+    const { guessMateRoomId, playerName, persistentId, language = 'en' } = req.body;
     
-    if (!wordleRoomId || !playerName) {
+    if (!guessMateRoomId || !playerName) {
       res.status(400).json({ error: 'Room ID and player name are required' });
       return;
     }
 
-    const result = await roomManager.joinRoomByCode(wordleRoomId, playerName, persistentId, language);
+    const result = await roomManager.joinRoomByCode(guessMateRoomId, playerName, persistentId, language);
     res.json(result);
   } catch (error) {
     console.error('Error joining room:', error);
@@ -103,5 +103,5 @@ app.get('/rooms', roomsHandler);
 
 gameServer.listen(port);
 
-console.log(`🎮 Wordle Game Server is running on ws://localhost:${port}`);
+console.log(`🎮 GuessMate Game Server is running on ws://localhost:${port}`);
 console.log(`📊 Monitor: http://localhost:${port}/colyseus`);
