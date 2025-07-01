@@ -249,8 +249,10 @@ export const GuessMateGameProvider: React.FC<GuessMateGameProviderProps> = ({ ch
   }, [currentRound]);
 
   const leaveRoom = useCallback(async () => {
+    console.log("Leaving room:", room, room?.connection.isOpen);
     if (room && room.connection.isOpen) {
       try {
+        
         await room.leave();
       } catch (error) {
         console.error("Error leaving room:", error);

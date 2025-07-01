@@ -17,6 +17,7 @@ export function GameRoomColyseus() {
 
   // Get all game state from context
   const {
+    disconnect,
     room,
     isConnected,
     currentPlayer,
@@ -241,7 +242,7 @@ export function GameRoomColyseus() {
           </p>
           {error && (
             <button
-              onClick={() => router.push("/")}
+              onClick={() => disconnect()}
               className="mt-4 btn btn-secondary"
             >
               Back to Home
@@ -394,7 +395,7 @@ export function GameRoomColyseus() {
             {/* Back to Home Button */}
             <div className="text-center">
               <button
-                onClick={() => router.push("/")}
+                onClick={() => disconnect()}
                 className="btn btn-secondary"
               >
                 ← Back to Home
@@ -567,7 +568,7 @@ export function GameRoomColyseus() {
             {/* Back to Home Button */}
             <div className="text-center pt-4">
               <button
-                onClick={() => router.push("/")}
+                onClick={() => disconnect()}
                 className="btn btn-secondary"
               >
                 ← Back to Home
