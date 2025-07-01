@@ -118,12 +118,11 @@ export class GuessMateGameState extends Schema {
       player.gameStatus = 'playing';
       player.currentRow = 0;
       player.completionTime = undefined;
-      
+      player.progress = new ArraySchema<TileState>();
       // Reset progress grid
       for (let i = 0; i < 30; i++) {
-          player.progress[i] = 'empty';
+          player.progress.push('empty');
       }
-      console.log(`Player ${player.name} (${player.id}) has started a new round: ${player.progress.toString()}`);
     });
   }
 
